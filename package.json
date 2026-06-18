@@ -1,0 +1,18 @@
+{
+  "name": "naukri-automation",
+  "version": "1.0.0",
+  "description": "Incremental Playwright Test automation framework for Naukri.",
+  "private": true,
+  "scripts": {
+    "postinstall": "patch-package",
+    "test": "playwright test",
+    "test:profile": "playwright test tests/profile",
+    "test:profile:headed": "playwright test tests/profile/updateProfile.spec.js --headed",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report reports/html-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "patch-package": "^8.0.1"
+  }
+}
