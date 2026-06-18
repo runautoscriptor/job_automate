@@ -1,5 +1,6 @@
 const loginLocators = Object.freeze({
   loginPath: '/nlogin/login',
+  authenticatedHomePath: '/mnjuser/homepage',
   emailInput: {
     placeholder: 'Enter Email ID / Username'
   },

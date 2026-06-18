@@ -6,6 +6,8 @@
   "scripts": {
     "postinstall": "patch-package",
     "test": "playwright test",
+    "test:jobs": "playwright test tests/jobs",
+    "test:jobs:headed": "playwright test tests/jobs/searchAndApply.spec.js --headed",
     "test:profile": "playwright test tests/profile",
     "test:profile:headed": "playwright test tests/profile/updateProfile.spec.js --headed",
     "test:headed": "playwright test --headed",

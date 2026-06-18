@@ -1,6 +1,7 @@
 const { loginLocators } = require('../../locators/auth/login.locators');
 const { expect } = require('@playwright/test');
 const { getEnv } = require('../../utils/env');
+const { getAuthStatePath } = require('../../utils/authState');
 
 class LoginPage {
   constructor(page) {
@@ -30,6 +31,13 @@ class LoginPage {
     ).toString();
   }
 
+  get authenticatedHomeUrl() {
+    return new URL(
+      this.locators.authenticatedHomePath,
+      getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com')
+    ).toString();
+  }
+
   async goto() {
     await this.page.goto(this.loginUrl, { waitUntil: 'domcontentloaded' });
     await expect(this.emailInput).toBeVisible();
@@ -55,15 +63,57 @@ class LoginPage {
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
 
-    await Promise.all([
-      this.page.waitForURL(new RegExp(this.locators.postLoginUrlFragment), {
-        timeout: 45000,
-        waitUntil: 'domcontentloaded'
-      }),
-      this.submitLoginButton.click()
-    ]);
+    await this.submitLoginButton.click();
+    await this.page.waitForLoadState('domcontentloaded');
 
-    await expect(this.page).toHaveURL(new RegExp(this.locators.postLoginUrlFragment));
+    await expect
+      .poll(
+        async () =>
+          new URL(this.page.url()).pathname.includes(this.locators.postLoginUrlFragment) &&
+          !(await this.emailInput.isVisible().catch(() => false)),
+        {
+        timeout: 45000
+        }
+      )
+      .toBeTruthy();
+    await this.saveAuthenticatedSession();
+  }
+
+  async ensureAuthenticatedSession() {
+    if (await this.isAuthenticated()) {
+      return;
+    }
+
+    await this.openLoginModal();
+    await this.loginWithCredentials();
+  }
+
+  async isAuthenticated() {
+    await this.page.goto(this.authenticatedHomeUrl, { waitUntil: 'domcontentloaded' });
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForTimeout(2000);
+
+    const currentUrl = new URL(this.page.url());
+    const hasVisibleLoginForm = await this.emailInput.isVisible().catch(() => false);
+    const hasVisibleLoginLink = await this.page
+      .getByRole('link', { name: 'Login', exact: true })
+      .isVisible()
+      .catch(() => false);
+    const hasProfileShortcut = await this.page
+      .getByRole('link', { name: 'Complete profile', exact: true })
+      .isVisible()
+      .catch(() => false);
+
+    return (
+      currentUrl.pathname.includes(this.locators.postLoginUrlFragment) &&
+      !hasVisibleLoginForm &&
+      !hasVisibleLoginLink &&
+      hasProfileShortcut
+    );
+  }
+
+  async saveAuthenticatedSession() {
+    await this.page.context().storageState({ path: getAuthStatePath() });
   }
 }
 

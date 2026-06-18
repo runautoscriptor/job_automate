@@ -10,8 +10,7 @@ test.describe('Profile Update', () => {
     test.setTimeout(120000);
     validateRequiredEnv(['NAUKRI_EMAIL', 'NAUKRI_PASSWORD']);
 
-    await loginPage.openLoginModal();
-    await loginPage.loginWithCredentials();
+    await loginPage.ensureAuthenticatedSession();
     await homePage.navigateToProfile();
     await profilePage.clickEditProfile();
     await profilePage.clickSaveProfile();
