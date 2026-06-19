@@ -10,5 +10,6 @@
   "locations": ["Noida", "Greater Noida", "Gurugram", "New Delhi"],
   "freshness": "Last 1 day",
   "maxApplicationsPerKeyword": 1,
-  "maxJobsToScanPerKeyword": 10
+  "maxJobsToScanPerKeyword": 10,
+  "minJobsToAttemptPerKeyword": 2
 }

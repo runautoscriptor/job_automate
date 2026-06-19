@@ -13,13 +13,21 @@ test.describe('Job Search And Apply', () => {
 
     validateRequiredEnv(['NAUKRI_EMAIL', 'NAUKRI_PASSWORD']);
 
-    const maxApplicationsPerKeyword = getNumberEnv(
-      'MAX_JOB_APPLICATIONS_PER_KEYWORD',
-      searchCriteria.maxApplicationsPerKeyword
+    const maxApplicationsPerKeyword = Math.min(
+      1,
+      getNumberEnv('MAX_JOB_APPLICATIONS_PER_KEYWORD', searchCriteria.maxApplicationsPerKeyword)
     );
     const maxJobsToScanPerKeyword = getNumberEnv(
       'MAX_JOBS_TO_SCAN_PER_KEYWORD',
       searchCriteria.maxJobsToScanPerKeyword
+    );
+    const minJobsToAttemptPerKeyword = getNumberEnv(
+      'MIN_JOBS_TO_ATTEMPT_PER_KEYWORD',
+      searchCriteria.minJobsToAttemptPerKeyword
+    );
+    const effectiveMaxJobsToScanPerKeyword = Math.max(
+      maxJobsToScanPerKeyword,
+      minJobsToAttemptPerKeyword
     );
 
     await loginPage.ensureAuthenticatedSession();
@@ -35,11 +43,12 @@ test.describe('Job Search And Apply', () => {
 
       const matchingJobs = await jobSearchPage.getVisibleJobLinks({
         keyword,
-        maxJobs: maxJobsToScanPerKeyword
+        maxJobs: effectiveMaxJobsToScanPerKeyword,
+        minJobsToAttempt: minJobsToAttemptPerKeyword
       });
 
       logger.info(
-        `Scanning up to ${matchingJobs.length} suitable jobs for keyword "${keyword}" to submit at most ${maxApplicationsPerKeyword} application.`
+        `Scanning up to ${matchingJobs.length} jobs for keyword "${keyword}" with a minimum target of ${minJobsToAttemptPerKeyword} attempts and at most ${maxApplicationsPerKeyword} successful application.`
       );
 
       const keywordSummary = await applyToSingleJobForKeyword({

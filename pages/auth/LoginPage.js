@@ -1,7 +1,12 @@
 const { loginLocators } = require('../../locators/auth/login.locators');
 const { expect } = require('@playwright/test');
 const { getEnv } = require('../../utils/env');
-const { getAuthStatePath } = require('../../utils/authState');
+const {
+  getAuthStatePath,
+  hasCompatibleAuthState,
+  saveAuthMetadata
+} = require('../../utils/authState');
+const { logger } = require('../../utils/logger');
 
 class LoginPage {
   constructor(page) {
@@ -24,6 +29,21 @@ class LoginPage {
     });
   }
 
+  get loginLink() {
+    return this.page.getByRole('link', { name: 'Login', exact: true });
+  }
+
+  get viewProfileLink() {
+    return this.page.getByRole('link', {
+      name: this.locators.viewProfileLinkName,
+      exact: true
+    });
+  }
+
+  get signedInUserAvatar() {
+    return this.page.getByAltText(this.locators.signedInUserAvatarAlt, { exact: true });
+  }
+
   get loginUrl() {
     return new URL(
       this.locators.loginPath,
@@ -40,6 +60,19 @@ class LoginPage {
 
   async goto() {
     await this.page.goto(this.loginUrl, { waitUntil: 'domcontentloaded' });
+
+    if (await this.hasSignedInIndicators()) {
+      return;
+    }
+
+    if (!(await this.emailInput.isVisible().catch(() => false))) {
+      const hasVisibleLoginLink = await this.loginLink.isVisible().catch(() => false);
+
+      if (hasVisibleLoginLink) {
+        await this.loginLink.click();
+      }
+    }
+
     await expect(this.emailInput).toBeVisible();
     await expect(this.passwordInput).toBeVisible();
   }
@@ -76,10 +109,16 @@ class LoginPage {
         }
       )
       .toBeTruthy();
-    await this.saveAuthenticatedSession();
+    await this.saveAuthenticatedSession(email, password);
   }
 
   async ensureAuthenticatedSession() {
+    if (!hasCompatibleAuthState()) {
+      logger.info(
+        'Stored auth state does not match the current .env credentials. A fresh login will be performed.'
+      );
+    }
+
     if (await this.isAuthenticated()) {
       return;
     }
@@ -93,27 +132,29 @@ class LoginPage {
     await this.page.waitForLoadState('domcontentloaded');
     await this.page.waitForTimeout(2000);
 
+    return this.hasSignedInIndicators();
+  }
+
+  async saveAuthenticatedSession(
+    email = getEnv('NAUKRI_EMAIL'),
+    password = getEnv('NAUKRI_PASSWORD')
+  ) {
+    await this.page.context().storageState({ path: getAuthStatePath() });
+    saveAuthMetadata({ email, password });
+  }
+
+  async hasSignedInIndicators() {
     const currentUrl = new URL(this.page.url());
     const hasVisibleLoginForm = await this.emailInput.isVisible().catch(() => false);
-    const hasVisibleLoginLink = await this.page
-      .getByRole('link', { name: 'Login', exact: true })
-      .isVisible()
-      .catch(() => false);
-    const hasProfileShortcut = await this.page
-      .getByRole('link', { name: 'Complete profile', exact: true })
-      .isVisible()
-      .catch(() => false);
+    const hasVisibleLoginLink = await this.loginLink.isVisible().catch(() => false);
+    const hasViewProfileLink = await this.viewProfileLink.isVisible().catch(() => false);
+    const hasSignedInAvatar = await this.signedInUserAvatar.isVisible().catch(() => false);
 
     return (
       currentUrl.pathname.includes(this.locators.postLoginUrlFragment) &&
-      !hasVisibleLoginForm &&
       !hasVisibleLoginLink &&
-      hasProfileShortcut
+      (hasViewProfileLink || hasSignedInAvatar || !hasVisibleLoginForm)
     );
-  }
-
-  async saveAuthenticatedSession() {
-    await this.page.context().storageState({ path: getAuthStatePath() });
   }
 }
 

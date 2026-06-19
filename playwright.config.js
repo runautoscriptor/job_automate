@@ -1,5 +1,5 @@
 const { defineConfig, devices } = require('@playwright/test');
-const { hasAuthState, getAuthStatePath } = require('./utils/authState');
+const { hasCompatibleAuthState, getAuthStatePath } = require('./utils/authState');
 const { getEnv, getNumberEnv } = require('./utils/env');
 
 module.exports = defineConfig({
@@ -21,7 +21,7 @@ module.exports = defineConfig({
     headless: getEnv('HEADLESS', 'false') === 'true',
     actionTimeout: getNumberEnv('ACTION_TIMEOUT', 15000),
     navigationTimeout: getNumberEnv('NAVIGATION_TIMEOUT', 45000),
-    storageState: hasAuthState() ? getAuthStatePath() : undefined,
+    storageState: hasCompatibleAuthState() ? getAuthStatePath() : undefined,
     launchOptions: {
       slowMo: getNumberEnv('SLOW_MO', 0)
     },

@@ -11,6 +11,8 @@ const loginLocators = Object.freeze({
     role: 'button',
     name: 'Login'
   },
+  viewProfileLinkName: 'View profile',
+  signedInUserAvatarAlt: 'naukri user profile img',
   postLoginUrlFragment: '/mnjuser/'
 });
 

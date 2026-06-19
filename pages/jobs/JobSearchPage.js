@@ -61,41 +61,55 @@ class JobSearchPage {
   }
 
   async applyFreshnessLastOneDay() {
-    const freshnessDropdown = this.page.getByRole(this.locators.freshnessDropdown.role, {
-      name: this.locators.freshnessDropdown.name
-    });
+    try {
+      const freshnessDropdown = this.page.getByRole(this.locators.freshnessDropdown.role, {
+        name: this.locators.freshnessDropdown.name
+      });
 
-    await expect(freshnessDropdown).toBeVisible();
-    await freshnessDropdown.click();
+      await expect(freshnessDropdown).toBeVisible();
+      await freshnessDropdown.click();
 
-    const lastOneDayOption = this.page.locator(this.locators.freshnessLastOneDayOption);
+      const lastOneDayOption = this.page.locator(this.locators.freshnessLastOneDayOption);
 
-    await expect(lastOneDayOption).toBeVisible();
+      await expect(lastOneDayOption).toBeVisible();
+      await lastOneDayOption.click({ timeout: 5000 });
+    } catch (error) {
+      logger.warn(
+        'Freshness dropdown interaction was unstable. Falling back to URL-based Last 1 Day filter.'
+      );
 
-    await Promise.all([
-      this.page.waitForLoadState('domcontentloaded'),
-      lastOneDayOption.click()
-    ]);
+      const filteredUrl = new URL(this.page.url());
+      filteredUrl.searchParams.set('jobAge', '1');
+
+      await this.page.goto(filteredUrl.toString(), { waitUntil: 'domcontentloaded' });
+    }
 
     await expect(this.page).toHaveURL(/jobAge=1/);
     await this.waitForResultsToRender();
   }
 
-  async getVisibleJobLinks({ keyword, maxJobs }) {
+  async getVisibleJobLinks({ keyword, maxJobs, minJobsToAttempt = 0 }) {
     const jobs = await this.page.evaluate((selector) => {
       const uniqueJobs = new Map();
 
       for (const link of document.querySelectorAll(selector)) {
         const title = link.textContent.replace(/\s+/g, ' ').trim();
-        const url = link.href;
+        const rawUrl = link.href;
 
-        if (!title || !url || uniqueJobs.has(url)) {
+        if (!title || !rawUrl) {
           continue;
         }
 
-        uniqueJobs.set(url, {
+        const normalizedUrl = new URL(rawUrl);
+        const canonicalUrl = `${normalizedUrl.origin}${normalizedUrl.pathname}`;
+
+        if (uniqueJobs.has(canonicalUrl)) {
+          continue;
+        }
+
+        uniqueJobs.set(canonicalUrl, {
           title,
-          url
+          url: canonicalUrl
         });
       }
 
@@ -103,12 +117,22 @@ class JobSearchPage {
     }, this.locators.jobLinksSelector);
 
     const matchedJobs = jobs.filter((job) => matchesSearchKeyword(job.title, keyword));
-
-    logger.info(
-      `Collected ${matchedJobs.length} keyword-matched jobs for "${keyword}" from the current results page.`
+    const fallbackJobs = jobs.filter(
+      (job) => !matchedJobs.some((matchedJob) => matchedJob.url === job.url)
+    );
+    const minimumPrioritizedJobs = Math.min(
+      jobs.length,
+      Math.max(minJobsToAttempt, matchedJobs.length)
+    );
+    const prioritizedJobs = matchedJobs.concat(
+      fallbackJobs.slice(0, Math.max(0, minimumPrioritizedJobs - matchedJobs.length))
     );
 
-    return matchedJobs.slice(0, maxJobs);
+    logger.info(
+      `Collected ${matchedJobs.length} keyword-matched jobs for "${keyword}" and prepared ${prioritizedJobs.length} same-search fallback jobs from the current results page.`
+    );
+
+    return prioritizedJobs.slice(0, maxJobs);
   }
 
   async expandLocationFilter(targetLocation) {
