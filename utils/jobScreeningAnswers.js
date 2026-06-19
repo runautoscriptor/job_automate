@@ -1,68 +1,31 @@
-const screeningProfile = Object.freeze({
-  currentLocation: 'Noida',
-  preferredLocations: 'Noida, Greater Noida, Gurugram, New Delhi',
-  noticePeriod: '15 Days or less',
-  totalExperience: '1 year',
-  expectedCompensation: 'Negotiable based on the role, responsibilities, and total compensation.',
-  genericProfessionalSummary:
-    'I bring a positive attitude, strong learning agility, attention to detail, and a quality-first approach to testing and delivery.',
-  manualTestingSummary:
-    'I am comfortable with manual testing, test case execution, bug reporting, regression validation, and clear communication with stakeholders.',
-  automationTestingSummary:
-    'I have a solid foundation in automation testing concepts and I am confident working with structured test scenarios, validation flows, and defect tracking.'
-});
+const { getCandidateProfileView } = require('./candidateProfile');
+const {
+  getTextAnswer,
+  normalizeQuestion,
+  resolveScreeningQuestion
+} = require('./screeningQuestionResolver');
 
-function normalizeQuestion(questionText) {
-  return String(questionText || '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
+function buildScreeningProfile() {
+  const candidateProfile = getCandidateProfileView();
+
+  return Object.freeze({
+    currentLocation: candidateProfile.locations.current,
+    preferredLocations: candidateProfile.locations.preferred.join(', '),
+    noticePeriod: candidateProfile.noticePeriod,
+    totalExperience: candidateProfile.experience.totalExperience,
+    currentCTC: candidateProfile.salaryDetails.currentCTC,
+    expectedCTC: candidateProfile.salaryDetails.expectedCTC,
+    genericProfessionalSummary: candidateProfile.experience.professionalSummary,
+    manualTestingSummary: candidateProfile.experience.professionalSummary,
+    automationTestingSummary: candidateProfile.experience.professionalSummary
+  });
 }
 
-function getTextAnswer(questionText) {
-  const normalizedQuestion = normalizeQuestion(questionText);
-
-  if (!normalizedQuestion) {
-    return null;
-  }
-
-  if (/notice|join|availability|available to join|immediate join/.test(normalizedQuestion)) {
-    return screeningProfile.noticePeriod;
-  }
-
-  if (/current location|present location|where are you based/.test(normalizedQuestion)) {
-    return screeningProfile.currentLocation;
-  }
-
-  if (/preferred location|relocate|location preference/.test(normalizedQuestion)) {
-    return screeningProfile.preferredLocations;
-  }
-
-  if (/experience|years of experience/.test(normalizedQuestion)) {
-    return screeningProfile.totalExperience;
-  }
-
-  if (/current ctc|expected ctc|salary|compensation|package/.test(normalizedQuestion)) {
-    return screeningProfile.expectedCompensation;
-  }
-
-  if (/manual testing/.test(normalizedQuestion)) {
-    return screeningProfile.manualTestingSummary;
-  }
-
-  if (/automation testing|selenium|api testing/.test(normalizedQuestion)) {
-    return screeningProfile.automationTestingSummary;
-  }
-
-  if (/why should we hire|why are you suitable|tell us about yourself|why do you want/.test(normalizedQuestion)) {
-    return screeningProfile.genericProfessionalSummary;
-  }
-
-  return null;
-}
+const screeningProfile = buildScreeningProfile();
 
 function choosePositiveOption(questionText, optionTexts = []) {
   const normalizedQuestion = normalizeQuestion(questionText);
+  const candidateProfile = getCandidateProfileView();
   const normalizedOptions = optionTexts.map((optionText) => ({
     raw: optionText,
     normalized: normalizeQuestion(optionText)
@@ -75,11 +38,15 @@ function choosePositiveOption(questionText, optionTexts = []) {
   const preferredChoices = [];
 
   if (/notice|join|availability/.test(normalizedQuestion)) {
-    preferredChoices.push('15 days', 'immediate', 'yes');
+    preferredChoices.push(normalizeQuestion(candidateProfile.noticePeriod), 'immediate', 'yes');
   }
 
   if (/location|relocate/.test(normalizedQuestion)) {
-    preferredChoices.push('noida', 'greater noida', 'gurugram', 'new delhi', 'yes');
+    preferredChoices.push(
+      normalizeQuestion(candidateProfile.locations.current),
+      ...candidateProfile.locations.preferred.map((location) => normalizeQuestion(location)),
+      'yes'
+    );
   }
 
   if (/work mode|work from office|hybrid|office/.test(normalizedQuestion)) {
@@ -87,7 +54,13 @@ function choosePositiveOption(questionText, optionTexts = []) {
   }
 
   if (/manual|automation|testing|shift|weekend|full time/.test(normalizedQuestion)) {
-    preferredChoices.push('yes', 'full time', 'manual', 'automation');
+    preferredChoices.push(
+      ...candidateProfile.skills.primary.map((skill) => normalizeQuestion(skill)),
+      'yes',
+      'full time',
+      'manual',
+      'automation'
+    );
   }
 
   preferredChoices.push('yes');
@@ -110,5 +83,6 @@ function choosePositiveOption(questionText, optionTexts = []) {
 module.exports = {
   choosePositiveOption,
   getTextAnswer,
+  resolveScreeningQuestion,
   screeningProfile
 };

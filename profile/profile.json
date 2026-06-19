@@ -1,0 +1,49 @@
+{
+  "name": "Vikas Kumar Singh",
+  "role": "QA Engineer",
+  "totalExperience": "1+ Years",
+  "skills": [
+    "Manual Testing",
+    "API Testing",
+    "Playwright",
+    "Cypress",
+    "Postman",
+    "Jira",
+    "Regression Testing",
+    "Smoke Testing",
+    "Sanity Testing",
+    "UAT",
+    "Cross Browser Testing",
+    "Agile Scrum"
+  ],
+  "primarySkills": [
+    "Playwright",
+    "API Testing",
+    "Manual Testing",
+    "Postman",
+    "Jira"
+  ],
+  "location": "Noida",
+  "preferredLocations": [
+    "Noida",
+    "Greater Noida",
+    "Gurugram",
+    "New Delhi"
+  ],
+  "noticePeriod": "Immediate",
+  "currentCTC": "2,40,000",
+  "expectedCTC": "4,00,000",
+  "education": {
+    "degree": "B.Tech Computer Science",
+    "cgpa": "7.69"
+  },
+  "experienceSummary": "QA Engineer with 1+ year experience in Manual Testing, API Testing, Web Application Testing, Playwright, Cypress, Postman, Jira and Agile methodologies.",
+  "professionalSummary": "QA Engineer with 1+ year experience in Manual Testing, API Testing, Web Application Testing, Playwright, Cypress, Postman, Jira and Agile methodologies.",
+  "jobKeywords": [
+    "QA Engineer",
+    "Manual Tester",
+    "Automation Tester",
+    "Software Test Engineer",
+    "QA Analyst"
+  ]
+}

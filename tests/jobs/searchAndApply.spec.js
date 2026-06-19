@@ -13,9 +13,13 @@ test.describe('Job Search And Apply', () => {
 
     validateRequiredEnv(['NAUKRI_EMAIL', 'NAUKRI_PASSWORD']);
 
-    const maxJobsToApplyPerKeyword = getNumberEnv(
+    const maxApplicationsPerKeyword = getNumberEnv(
       'MAX_JOB_APPLICATIONS_PER_KEYWORD',
-      searchCriteria.maxJobsToApplyPerKeyword
+      searchCriteria.maxApplicationsPerKeyword
+    );
+    const maxJobsToScanPerKeyword = getNumberEnv(
+      'MAX_JOBS_TO_SCAN_PER_KEYWORD',
+      searchCriteria.maxJobsToScanPerKeyword
     );
 
     await loginPage.ensureAuthenticatedSession();
@@ -31,29 +35,107 @@ test.describe('Job Search And Apply', () => {
 
       const matchingJobs = await jobSearchPage.getVisibleJobLinks({
         keyword,
-        maxJobs: maxJobsToApplyPerKeyword
+        maxJobs: maxJobsToScanPerKeyword
       });
 
       logger.info(
-        `Proceeding with ${matchingJobs.length} jobs for keyword "${keyword}" after page-level filtering.`
+        `Scanning up to ${matchingJobs.length} suitable jobs for keyword "${keyword}" to submit at most ${maxApplicationsPerKeyword} application.`
       );
 
-      for (const job of matchingJobs) {
-        const result = await jobApplyPage.applyToJob(job);
+      const keywordSummary = await applyToSingleJobForKeyword({
+        keyword,
+        matchingJobs,
+        maxApplicationsPerKeyword,
+        jobApplyPage
+      });
 
-        applicationSummary.push({
-          keyword,
-          ...result
-        });
-      }
+      applicationSummary.push(keywordSummary);
     }
 
     console.table(applicationSummary);
 
-    expect(
-      applicationSummary.some((result) =>
-        ['applied', 'already-applied'].includes(result.status)
-      )
-    ).toBeTruthy();
+    expect(applicationSummary).toHaveLength(searchCriteria.keywords.length);
+
+    for (const keywordResult of applicationSummary) {
+      expect(keywordResult.applicationsSubmitted).toBeLessThanOrEqual(1);
+    }
   });
 });
+
+async function applyToSingleJobForKeyword({
+  keyword,
+  matchingJobs,
+  maxApplicationsPerKeyword,
+  jobApplyPage
+}) {
+  const attemptedJobs = [];
+  let applicationsSubmitted = 0;
+
+  for (const job of matchingJobs) {
+    if (applicationsSubmitted >= maxApplicationsPerKeyword) {
+      break;
+    }
+
+    const result = await jobApplyPage.applyToJob(job);
+    attemptedJobs.push(result);
+
+    if (result.status === 'applied') {
+      applicationsSubmitted += 1;
+      break;
+    }
+
+    if (result.status === 'already-applied') {
+      logger.info(
+        `Job "${job.title}" was already applied for keyword "${keyword}". Looking for the next suitable job.`
+      );
+      continue;
+    }
+  }
+
+  return buildKeywordSummary({
+    keyword,
+    matchingJobs,
+    attemptedJobs,
+    applicationsSubmitted
+  });
+}
+
+function buildKeywordSummary({
+  keyword,
+  matchingJobs,
+  attemptedJobs,
+  applicationsSubmitted
+}) {
+  if (applicationsSubmitted > 0) {
+    return {
+      keyword,
+      status: 'applied',
+      applicationsSubmitted,
+      jobsConsidered: matchingJobs.length,
+      jobsAttempted: attemptedJobs.length
+    };
+  }
+
+  if (matchingJobs.length === 0) {
+    return {
+      keyword,
+      status: 'no-suitable-job-found',
+      applicationsSubmitted: 0,
+      jobsConsidered: 0,
+      jobsAttempted: 0
+    };
+  }
+
+  const attemptedStatuses = attemptedJobs.map((job) => job.status);
+  const allAlreadyApplied =
+    attemptedStatuses.length > 0 &&
+    attemptedStatuses.every((status) => status === 'already-applied');
+
+  return {
+    keyword,
+    status: allAlreadyApplied ? 'all-suitable-jobs-already-applied' : 'no-new-application-submitted',
+    applicationsSubmitted: 0,
+    jobsConsidered: matchingJobs.length,
+    jobsAttempted: attemptedJobs.length
+  };
+}

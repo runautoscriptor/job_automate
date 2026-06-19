@@ -18,7 +18,15 @@ function getKeywordTerms(keyword) {
       'automation',
       'qa automation',
       'tester'
-    ]
+    ],
+    'software test engineer': [
+      'software test engineer',
+      'test engineer',
+      'software tester',
+      'qa engineer',
+      'quality assurance engineer'
+    ],
+    'qa analyst': ['qa analyst', 'quality analyst', 'quality assurance analyst', 'qa', 'analyst']
   };
 
   return keywordTermMap[normalizedKeyword] || normalizedKeyword.split(' ');
