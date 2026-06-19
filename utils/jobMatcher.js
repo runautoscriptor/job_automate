@@ -39,7 +39,27 @@ function matchesSearchKeyword(jobTitle, keyword) {
   return keywordTerms.some((term) => normalizedTitle.includes(term));
 }
 
+function getMatchingKeywords(text, keywords = []) {
+  return keywords.filter((keyword) => matchesSearchKeyword(text, keyword));
+}
+
+function matchesCandidatePreferences({
+  title = '',
+  description = '',
+  keywords = []
+} = {}) {
+  const searchableText = [title, description].filter(Boolean).join(' ');
+  const matchingKeywords = getMatchingKeywords(searchableText, keywords);
+
+  return {
+    isMatch: matchingKeywords.length > 0,
+    matchingKeywords
+  };
+}
+
 module.exports = {
+  getMatchingKeywords,
+  matchesCandidatePreferences,
   matchesSearchKeyword,
   normalizeText
 };

@@ -15,9 +15,28 @@ class HomePage {
     });
   }
 
+  get jobsMenuLink() {
+    return this.page.getByRole(this.locators.jobsMenuLink.role, {
+      name: this.locators.jobsMenuLink.name
+    }).first();
+  }
+
+  get nvitesLink() {
+    return this.page.getByRole(this.locators.nvitesLink.role, {
+      name: this.locators.nvitesLink.name
+    }).first();
+  }
+
   get profileUrl() {
     return new URL(
       this.locators.profilePath,
+      getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com')
+    ).toString();
+  }
+
+  get nvitesUrl() {
+    return new URL(
+      this.locators.nvitesPath,
       getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com')
     ).toString();
   }
@@ -38,6 +57,23 @@ class HomePage {
     }
 
     await expect(this.page).toHaveURL(/\/mnjuser\/profile/);
+  }
+
+  async navigateToNvites() {
+    await this.page.goto(new URL('/mnjuser/homepage', this.nvitesUrl).toString(), {
+      waitUntil: 'domcontentloaded'
+    });
+    await this.page.waitForTimeout(1500);
+    await this.jobsMenuLink.hover().catch(() => {});
+    await expect(this.nvitesLink).toBeVisible({ timeout: 15000 });
+
+    await Promise.all([
+      this.page.waitForURL(/\/mnjuser\/inbox/, {
+        timeout: 45000,
+        waitUntil: 'domcontentloaded'
+      }),
+      this.nvitesLink.click()
+    ]);
   }
 }
 

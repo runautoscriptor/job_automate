@@ -11,14 +11,11 @@ class JobApplyPage {
   }
 
   get applyButton() {
-    return this.page.getByRole(this.locators.applyButton.role, {
-      name: this.locators.applyButton.name,
-      exact: true
-    });
+    return this.getApplyButtonLocator();
   }
 
   get appliedStateIndicator() {
-    return this.page.getByText(this.locators.appliedStateText, { exact: true });
+    return this.getAppliedStateIndicatorLocator();
   }
 
   get resumeLaterButton() {
@@ -31,28 +28,49 @@ class JobApplyPage {
     await this.page.goto(job.url, { waitUntil: 'domcontentloaded' });
     await this.page.waitForLoadState('domcontentloaded');
 
-    if (await this.isAlreadyApplied()) {
-      return this.createResult(job, 'already-applied');
+    return this.applyToCurrentJob(job);
+  }
+
+  getApplyButtonLocator(root = this.page) {
+    return root.getByRole(this.locators.applyButton.role, {
+      name: this.locators.applyButton.name,
+      exact: true
+    });
+  }
+
+  getAppliedStateIndicatorLocator(root = this.page) {
+    return root.getByText(this.locators.appliedStateText, { exact: true });
+  }
+
+  async applyToCurrentJob(job, options = {}) {
+    const { root = this.page } = options;
+    const normalizedJob = {
+      title: job.title || 'Unknown job',
+      url: job.url || this.page.url()
+    };
+
+    if (await this.isAlreadyApplied({ root })) {
+      return this.createResult(normalizedJob, 'already-applied');
     }
 
-    const hasApplyButton = await this.applyButton.isVisible().catch(() => false);
+    const hasApplyButton = await this.hasApplyButton({ root });
 
     if (!hasApplyButton) {
-      await captureNamedScreenshot(this.page, `${job.title}-missing-apply-button`);
-      return this.createResult(job, 'skipped-no-apply-button');
+      await captureNamedScreenshot(this.page, `${normalizedJob.title}-missing-apply-button`);
+      return this.createResult(normalizedJob, 'skipped-no-apply-button');
     }
 
-    await this.applyButton.click();
+    await this.getApplyButtonLocator(root).click();
     await this.page.waitForTimeout(1500);
 
     await this.handleResumePromptIfVisible();
 
     if (await this.isApplicationSuccessful()) {
-      return this.createResult(job, 'applied');
+      return this.createResult(normalizedJob, 'applied');
     }
 
-    if (await this.isAlreadyApplied()) {
-      return this.createResult(job, 'already-applied');
+    if (await this.isAlreadyApplied({ root })) {
+      return this.createResult(normalizedJob, 'already-applied');
     }
 
     const screeningSummary = await this.answerVisibleScreeningQuestions();
@@ -64,22 +82,27 @@ class JobApplyPage {
     }
 
     if (await this.isApplicationSuccessful()) {
-      return this.createResult(job, 'applied');
+      return this.createResult(normalizedJob, 'applied');
     }
 
-    if (await this.isAlreadyApplied()) {
-      return this.createResult(job, 'already-applied');
+    if (await this.isAlreadyApplied({ root })) {
+      return this.createResult(normalizedJob, 'already-applied');
     }
 
-    await captureNamedScreenshot(this.page, `${job.title}-needs-review`);
+    await captureNamedScreenshot(this.page, `${normalizedJob.title}-needs-review`);
     await this.dismissOpenModalIfPresent();
 
     return this.createResult(
-      job,
+      normalizedJob,
       screeningSummary.unsupportedCount > 0
         ? 'skipped-unsupported-screening'
         : 'skipped-needs-review'
     );
+  }
+
+  async hasApplyButton(options = {}) {
+    const { root = this.page } = options;
+    return this.getApplyButtonLocator(root).isVisible().catch(() => false);
   }
 
   async handleResumePromptIfVisible() {
@@ -346,14 +369,17 @@ class JobApplyPage {
     return false;
   }
 
-  async isAlreadyApplied() {
-    const appliedIndicatorVisible = await this.appliedStateIndicator.isVisible().catch(() => false);
+  async isAlreadyApplied(options = {}) {
+    const { root = this.page } = options;
+    const appliedIndicatorVisible = await this.getAppliedStateIndicatorLocator(root)
+      .isVisible()
+      .catch(() => false);
 
     if (appliedIndicatorVisible) {
       return true;
     }
 
-    return this.page.getByText(this.locators.alreadyAppliedPattern).isVisible().catch(() => false);
+    return root.getByText(this.locators.alreadyAppliedPattern).isVisible().catch(() => false);
   }
 
   async isApplicationSuccessful() {
