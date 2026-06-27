@@ -10,6 +10,8 @@
     "test:jobs:headed": "playwright test tests/jobs/searchAndApply.spec.js --headed",
     "test:nvites": "playwright test tests/notifications/processNvites.spec.js",
     "test:nvites:headed": "playwright test tests/notifications/processNvites.spec.js --headed",
+    "test:recommendations": "playwright test tests/recommendations/processRecommendations.spec.js",
+    "test:recommendations:headed": "playwright test tests/recommendations/processRecommendations.spec.js --headed",
     "test:profile": "playwright test tests/profile",
     "test:profile:headed": "playwright test tests/profile/updateProfile.spec.js --headed",
     "test:headed": "playwright test --headed",

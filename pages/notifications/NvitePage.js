@@ -81,15 +81,10 @@ class NvitePage {
     );
   }
 
-  async openInvitationAt(index) {
-    const targetCard = this.invitationCards.nth(index);
-    const cardText = await targetCard.innerText();
-    const expectedTitle = String(cardText || '')
-      .split(/\n+/)
-      .map((line) => line.trim())
-      .filter(Boolean)[0];
+  async openInvitation(invitation) {
+    const expectedTitle = invitation.title;
 
-    await targetCard.click();
+    await this.clickInvitationCard(invitation);
     await expect(this.selectedInvitationCard).toBeVisible({ timeout: 15000 });
 
     if (expectedTitle) {
@@ -99,6 +94,43 @@ class NvitePage {
         })
         .toContain(expectedTitle);
     }
+  }
+
+  async clickInvitationCard(invitation) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const targetIndex = await this.invitationCards.evaluateAll((cards, signature) => {
+        function buildSignature(card) {
+          return card.innerText
+            .split(/\n+/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .join(' | ');
+        }
+
+        return cards.findIndex((card) => buildSignature(card) === signature);
+      }, invitation.signature);
+
+      if (targetIndex === -1) {
+        await this.page.waitForTimeout(500);
+        continue;
+      }
+
+      const targetCard = this.invitationCards.nth(targetIndex);
+
+      try {
+        await targetCard.scrollIntoViewIfNeeded().catch(() => {});
+        await targetCard.click({ timeout: 5000 });
+        return;
+      } catch (error) {
+        if (attempt === 3) {
+          throw error;
+        }
+
+        await this.page.waitForTimeout(1000);
+      }
+    }
+
+    throw new Error(`Unable to open NVite "${invitation.title}".`);
   }
 
   async getSelectedInvitationDetails() {

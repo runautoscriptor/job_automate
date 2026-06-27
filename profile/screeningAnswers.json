@@ -1,0 +1,11 @@
+{
+  "textAnswers": [
+    {
+      "id": "rag-technique",
+      "matchType": "includes",
+      "questionPattern": "combines external knowledge with an llm",
+      "answer": "Retrieval-Augmented Generation (RAG)."
+    }
+  ],
+  "choiceAnswers": []
+}

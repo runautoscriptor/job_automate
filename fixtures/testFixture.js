@@ -5,8 +5,14 @@ const { JobApplyPage } = require('../pages/jobs/JobApplyPage');
 const { JobSearchPage } = require('../pages/jobs/JobSearchPage');
 const { NvitePage } = require('../pages/notifications/NvitePage');
 const { ProfilePage } = require('../pages/profile/ProfilePage');
+const { RecommendationPage } = require('../pages/recommendations/RecommendationPage');
+const { allowNaukriLocationAccess } = require('../utils/locationAccess');
 
 const test = base.test.extend({
+  context: async ({ context, baseURL }, use) => {
+    await allowNaukriLocationAccess(context, baseURL);
+    await use(context);
+  },
   loginPage: async ({ page }, use) => {
     await use(new LoginPage(page));
   },
@@ -21,6 +27,9 @@ const test = base.test.extend({
   },
   nvitePage: async ({ page }, use) => {
     await use(new NvitePage(page));
+  },
+  recommendationPage: async ({ page }, use) => {
+    await use(new RecommendationPage(page));
   },
   profilePage: async ({ page }, use) => {
     await use(new ProfilePage(page));

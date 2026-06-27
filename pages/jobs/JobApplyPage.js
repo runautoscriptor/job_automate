@@ -1,7 +1,7 @@
 const { expect } = require('@playwright/test');
 const { jobApplyLocators } = require('../../locators/jobs/jobApply.locators');
 const { captureNamedScreenshot } = require('../../utils/screenshot');
-const { choosePositiveOption, getTextAnswer } = require('../../utils/jobScreeningAnswers');
+const { getTextAnswer, resolveChoiceAnswer } = require('../../utils/jobScreeningAnswers');
 const { logger } = require('../../utils/logger');
 
 class JobApplyPage {
@@ -43,34 +43,47 @@ class JobApplyPage {
   }
 
   async applyToCurrentJob(job, options = {}) {
-    const { root = this.page } = options;
+    const {
+      root = this.page,
+      triggerApply = true
+    } = options;
     const normalizedJob = {
       title: job.title || 'Unknown job',
       url: job.url || this.page.url()
     };
 
     if (await this.isAlreadyApplied({ root })) {
-      return this.createResult(normalizedJob, 'already-applied');
+      return this.createResult(normalizedJob, 'already-applied', {
+        unknownQuestionsLogged: 0
+      });
     }
 
-    const hasApplyButton = await this.hasApplyButton({ root });
+    if (triggerApply) {
+      const hasApplyButton = await this.hasApplyButton({ root });
 
-    if (!hasApplyButton) {
-      await captureNamedScreenshot(this.page, `${normalizedJob.title}-missing-apply-button`);
-      return this.createResult(normalizedJob, 'skipped-no-apply-button');
+      if (!hasApplyButton) {
+        await captureNamedScreenshot(this.page, `${normalizedJob.title}-missing-apply-button`);
+        return this.createResult(normalizedJob, 'skipped-no-apply-button', {
+          unknownQuestionsLogged: 0
+        });
+      }
+
+      await this.getApplyButtonLocator(root).click();
+      await this.page.waitForTimeout(1500);
     }
-
-    await this.getApplyButtonLocator(root).click();
-    await this.page.waitForTimeout(1500);
 
     await this.handleResumePromptIfVisible();
 
     if (await this.isApplicationSuccessful()) {
-      return this.createResult(normalizedJob, 'applied');
+      return this.createResult(normalizedJob, 'applied', {
+        unknownQuestionsLogged: 0
+      });
     }
 
     if (await this.isAlreadyApplied({ root })) {
-      return this.createResult(normalizedJob, 'already-applied');
+      return this.createResult(normalizedJob, 'already-applied', {
+        unknownQuestionsLogged: 0
+      });
     }
 
     const screeningSummary = await this.answerVisibleScreeningQuestions();
@@ -82,11 +95,15 @@ class JobApplyPage {
     }
 
     if (await this.isApplicationSuccessful()) {
-      return this.createResult(normalizedJob, 'applied');
+      return this.createResult(normalizedJob, 'applied', {
+        unknownQuestionsLogged: screeningSummary.unknownQuestionsLogged
+      });
     }
 
     if (await this.isAlreadyApplied({ root })) {
-      return this.createResult(normalizedJob, 'already-applied');
+      return this.createResult(normalizedJob, 'already-applied', {
+        unknownQuestionsLogged: screeningSummary.unknownQuestionsLogged
+      });
     }
 
     await captureNamedScreenshot(this.page, `${normalizedJob.title}-needs-review`);
@@ -96,7 +113,10 @@ class JobApplyPage {
       normalizedJob,
       screeningSummary.unsupportedCount > 0
         ? 'skipped-unsupported-screening'
-        : 'skipped-needs-review'
+        : 'skipped-needs-review',
+      {
+        unknownQuestionsLogged: screeningSummary.unknownQuestionsLogged
+      }
     );
   }
 
@@ -285,15 +305,18 @@ class JobApplyPage {
 
     let answeredCount = 0;
     let unsupportedCount = 0;
+    let unknownQuestionsLogged = 0;
 
     for (const field of questionFields) {
       const questionText = field.questionText || field.placeholder;
 
       if (field.type === 'select') {
-        const optionToSelect = choosePositiveOption(questionText, field.options);
+        const choiceResolution = resolveChoiceAnswer(questionText, field.options);
+        const optionToSelect = choiceResolution.status === 'known' ? choiceResolution.answer : null;
 
         if (!optionToSelect) {
           unsupportedCount += 1;
+          unknownQuestionsLogged += 1;
           continue;
         }
 
@@ -304,11 +327,13 @@ class JobApplyPage {
 
       if (field.type === 'radio-group') {
         const optionLabels = field.options.map((option) => option.label);
-        const preferredOption = choosePositiveOption(questionText, optionLabels);
+        const choiceResolution = resolveChoiceAnswer(questionText, optionLabels);
+        const preferredOption = choiceResolution.status === 'known' ? choiceResolution.answer : null;
         const matchingOption = field.options.find((option) => option.label === preferredOption);
 
         if (!matchingOption) {
           unsupportedCount += 1;
+          unknownQuestionsLogged += 1;
           continue;
         }
 
@@ -321,6 +346,7 @@ class JobApplyPage {
 
       if (!answerText) {
         unsupportedCount += 1;
+        unknownQuestionsLogged += 1;
         continue;
       }
 
@@ -349,7 +375,8 @@ class JobApplyPage {
     return {
       attempted: answeredCount > 0 || unsupportedCount > 0,
       answeredCount,
-      unsupportedCount
+      unsupportedCount,
+      unknownQuestionsLogged
     };
   }
 
@@ -403,13 +430,14 @@ class JobApplyPage {
     return false;
   }
 
-  createResult(job, status) {
+  createResult(job, status, extra = {}) {
     logger.info(`Job "${job.title}" finished with status "${status}".`);
 
     return {
       jobTitle: job.title,
       jobUrl: job.url,
-      status
+      status,
+      ...extra
     };
   }
 }

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getCandidateProfileView } = require('./candidateProfile');
+const { loadManualScreeningAnswers } = require('./manualScreeningAnswers');
 const { logger } = require('./logger');
 
 const UNKNOWN_QUESTION_LOG_PATH = path.resolve(
@@ -83,6 +84,20 @@ function resolveScreeningQuestion(questionText, options = {}) {
     };
   }
 
+  const manualAnswer = findManualTextAnswer(normalizedQuestion);
+
+  if (manualAnswer) {
+    return {
+      status: 'known',
+      questionText,
+      normalizedQuestion,
+      source: 'profile/screeningAnswers.json',
+      route: 'manual-answer-bank',
+      answer: manualAnswer.answer,
+      answerId: manualAnswer.id || ''
+    };
+  }
+
   const profile = getCandidateProfileView();
   const matchedRule = TEXT_QUESTION_RULES.find((rule) => rule.pattern.test(normalizedQuestion));
 
@@ -143,7 +158,54 @@ function getTextAnswer(questionText, options = {}) {
   return resolution.status === 'known' ? resolution.answer : null;
 }
 
+function findManualTextAnswer(normalizedQuestion) {
+  const { textAnswers } = loadManualScreeningAnswers();
+
+  return textAnswers.find((entry) => matchesQuestionEntry(normalizedQuestion, entry)) || null;
+}
+
+function findManualChoiceAnswer(normalizedQuestion, optionTexts = []) {
+  const { choiceAnswers } = loadManualScreeningAnswers();
+
+  const matchedEntry =
+    choiceAnswers.find((entry) => matchesQuestionEntry(normalizedQuestion, entry)) || null;
+
+  if (!matchedEntry) {
+    return null;
+  }
+
+  const normalizedOptions = optionTexts.map((optionText) => ({
+    raw: optionText,
+    normalized: normalizeQuestion(optionText)
+  }));
+  const preferredOption = normalizeQuestion(matchedEntry.preferredOption);
+
+  return (
+    normalizedOptions.find((option) => option.normalized === preferredOption) ||
+    normalizedOptions.find((option) => option.normalized.includes(preferredOption)) ||
+    normalizedOptions.find((option) => preferredOption.includes(option.normalized)) ||
+    null
+  );
+}
+
+function matchesQuestionEntry(normalizedQuestion, entry = {}) {
+  const matchType = entry.matchType || 'includes';
+  const normalizedPattern = normalizeQuestion(entry.questionPattern || entry.questionText);
+
+  if (!normalizedPattern) {
+    return false;
+  }
+
+  if (matchType === 'exact') {
+    return normalizedQuestion === normalizedPattern;
+  }
+
+  return normalizedQuestion.includes(normalizedPattern);
+}
+
 module.exports = {
+  findManualChoiceAnswer,
+  findManualTextAnswer,
   getTextAnswer,
   logUnknownQuestion,
   normalizeQuestion,

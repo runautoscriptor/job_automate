@@ -12,11 +12,11 @@ async function runNviteFlow({
   const processedInvitations = new Set();
   const reviewResults = [];
 
-  await homePage.navigateToNvites();
-  await nvitePage.waitForPageReady();
-  await nvitePage.activateAllInvitations();
+  await ensureNviteContext({ homePage, nvitePage });
 
   while (true) {
+    await ensureNviteContext({ homePage, nvitePage });
+
     const visibleInvitations = await nvitePage.getVisibleInvitationCards();
     const nextInvitation = visibleInvitations.find(
       (invitation) => !processedInvitations.has(invitation.signature)
@@ -29,7 +29,21 @@ async function runNviteFlow({
     processedInvitations.add(nextInvitation.signature);
     logger.info(`Reviewing NVite "${nextInvitation.title}"`);
 
-    await nvitePage.openInvitationAt(nextInvitation.index);
+    try {
+      await nvitePage.openInvitation(nextInvitation);
+    } catch (error) {
+      logger.warn(
+        `Skipping NVite "${nextInvitation.title}" because it could not be reopened reliably.`
+      );
+      reviewResults.push(
+        createNviteResult(nextInvitation, 'skipped-not-openable', {
+          matchingKeywords: '',
+          unknownQuestionsLogged: 0
+        })
+      );
+      continue;
+    }
+
     const details = normalizeNviteDetails(
       await nvitePage.getSelectedInvitationDetails(),
       nextInvitation
@@ -57,8 +71,9 @@ async function runNviteFlow({
     if (!matchResult.isMatch) {
       await nvitePage.markCurrentInvitationNotInterested();
       reviewResults.push(
-        createNviteResult(details, 'not-interested', {
-          matchingKeywords: ''
+      createNviteResult(details, 'not-interested', {
+          matchingKeywords: '',
+          unknownQuestionsLogged: 0
         })
       );
       continue;
@@ -73,7 +88,8 @@ async function runNviteFlow({
 
     reviewResults.push(
       createNviteResult(details, applicationResult.status, {
-        matchingKeywords: matchResult.matchingKeywords.join(', ')
+        matchingKeywords: matchResult.matchingKeywords.join(', '),
+        unknownQuestionsLogged: applicationResult.unknownQuestionsLogged || 0
       })
     );
   }
@@ -99,6 +115,25 @@ function normalizeNviteDetails(details, invitationCard) {
     title: details.title || invitationCard.title,
     company: details.company || ''
   };
+}
+
+async function ensureNviteContext({
+  homePage,
+  nvitePage
+}) {
+  const isOnInboxPage = /\/mnjuser\/inbox/.test(nvitePage.page.url());
+  const hasVisibleInvitationCards = await nvitePage.invitationCards
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  if (isOnInboxPage && hasVisibleInvitationCards) {
+    return;
+  }
+
+  await homePage.navigateToNvites();
+  await nvitePage.waitForPageReady();
+  await nvitePage.activateAllInvitations();
 }
 
 module.exports = {

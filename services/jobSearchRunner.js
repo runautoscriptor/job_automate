@@ -1,6 +1,7 @@
 const searchCriteria = require('../test-data/jobs/searchCriteria.json');
 const { getNumberEnv } = require('../utils/env');
 const { logger } = require('../utils/logger');
+const { buildJobModuleSummary } = require('../utils/reportPrinter');
 
 async function runJobSearchAndApplyFlow({
   jobSearchPage,
@@ -25,6 +26,7 @@ async function runJobSearchAndApplyFlow({
 
   const searchResults = [];
   const applicationResults = [];
+  const attemptedJobResults = [];
 
   for (const keyword of searchCriteria.keywords) {
     logger.info(`Starting Phase 2 search flow for keyword "${keyword}"`);
@@ -50,20 +52,32 @@ async function runJobSearchAndApplyFlow({
       `Scanning up to ${matchingJobs.length} jobs for keyword "${keyword}" with a minimum target of ${minJobsToAttemptPerKeyword} attempts and at most ${maxApplicationsPerKeyword} successful application.`
     );
 
-    const keywordSummary = await applyToSingleJobForKeyword({
+    const keywordOutcome = await applyToSingleJobForKeyword({
       keyword,
       matchingJobs,
       maxApplicationsPerKeyword,
       jobApplyPage
     });
 
-    applicationResults.push(keywordSummary);
+    applicationResults.push(keywordOutcome.summary);
+    attemptedJobResults.push(
+      ...keywordOutcome.attemptedJobs.map((jobResult) => ({
+        keyword,
+        ...jobResult
+      }))
+    );
   }
 
   return {
     searchCriteria,
     searchResults,
-    applicationResults
+    applicationResults,
+    attemptedJobResults,
+    summary: buildJobModuleSummary({
+      searchResults,
+      applicationResults,
+      attemptedJobResults
+    })
   };
 }
 
@@ -96,12 +110,15 @@ async function applyToSingleJobForKeyword({
     }
   }
 
-  return buildKeywordSummary({
-    keyword,
-    matchingJobs,
-    attemptedJobs,
-    applicationsSubmitted
-  });
+  return {
+    summary: buildKeywordSummary({
+      keyword,
+      matchingJobs,
+      attemptedJobs,
+      applicationsSubmitted
+    }),
+    attemptedJobs
+  };
 }
 
 function buildKeywordSummary({

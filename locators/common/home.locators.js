@@ -7,12 +7,17 @@ const homeLocators = Object.freeze({
     role: 'link',
     name: /NVites/i
   },
+  recommendedJobsLink: {
+    role: 'link',
+    name: /Recommended jobs/i
+  },
   completeProfileLink: {
     role: 'link',
     name: 'Complete profile'
   },
   profilePath: '/mnjuser/profile',
-  nvitesPath: '/mnjuser/inbox'
+  nvitesPath: '/mnjuser/inbox',
+  signedInHomePath: '/mnjuser/homepage'
 });
 
 module.exports = { homeLocators };

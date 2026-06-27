@@ -27,6 +27,19 @@ class HomePage {
     }).first();
   }
 
+  get recommendedJobsLink() {
+    return this.page.getByRole(this.locators.recommendedJobsLink.role, {
+      name: this.locators.recommendedJobsLink.name
+    }).first();
+  }
+
+  get signedInHomeUrl() {
+    return new URL(
+      this.locators.signedInHomePath,
+      getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com')
+    ).toString();
+  }
+
   get profileUrl() {
     return new URL(
       this.locators.profilePath,
@@ -60,20 +73,35 @@ class HomePage {
   }
 
   async navigateToNvites() {
-    await this.page.goto(new URL('/mnjuser/homepage', this.nvitesUrl).toString(), {
-      waitUntil: 'domcontentloaded'
-    });
+    await this.navigateFromJobsMenu(this.nvitesLink, /\/mnjuser\/inbox/);
+  }
+
+  async navigateToRecommendedJobs() {
+    await this.navigateFromJobsMenu(this.recommendedJobsLink, /recommend/i);
+  }
+
+  async navigateFromJobsMenu(targetLink, expectedUrlPattern) {
+    await this.page.goto(this.signedInHomeUrl, { waitUntil: 'domcontentloaded' });
     await this.page.waitForTimeout(1500);
     await this.jobsMenuLink.hover().catch(() => {});
-    await expect(this.nvitesLink).toBeVisible({ timeout: 15000 });
+    await expect(targetLink).toBeVisible({ timeout: 15000 });
 
-    await Promise.all([
-      this.page.waitForURL(/\/mnjuser\/inbox/, {
-        timeout: 45000,
-        waitUntil: 'domcontentloaded'
-      }),
-      this.nvitesLink.click()
-    ]);
+    const targetHref = await targetLink.getAttribute('href');
+
+    if (targetHref) {
+      const destinationUrl = new URL(
+        targetHref,
+        getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com')
+      ).toString();
+      await this.page.goto(destinationUrl, { waitUntil: 'domcontentloaded' });
+    } else {
+      await targetLink.click();
+      await this.page.waitForLoadState('domcontentloaded');
+    }
+
+    if (expectedUrlPattern) {
+      await expect(this.page).toHaveURL(expectedUrlPattern, { timeout: 45000 });
+    }
   }
 }
 
