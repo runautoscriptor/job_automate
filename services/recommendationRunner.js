@@ -78,6 +78,8 @@ async function runRecommendationFlow({
         createRecommendationResult(recommendation, 'skipped-not-selectable', {
           isMatch: true,
           matchingKeywords: matchResult.matchingKeywords.join(', '),
+          questionsAnswered: 0,
+          questionsSkipped: 0,
           unknownQuestionsLogged: 0
         })
       );
@@ -99,6 +101,8 @@ async function runRecommendationFlow({
       createRecommendationResult(recommendation, applicationResult.status, {
         isMatch: true,
         matchingKeywords: matchResult.matchingKeywords.join(', '),
+        questionsAnswered: applicationResult.questionsAnswered || 0,
+        questionsSkipped: applicationResult.questionsSkipped || 0,
         unknownQuestionsLogged: applicationResult.unknownQuestionsLogged || 0
       })
     );

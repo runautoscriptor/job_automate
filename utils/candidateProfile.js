@@ -88,6 +88,7 @@ function getCandidateProfileView(options = {}) {
       expectedCTC: profile.expectedCTC
     },
     noticePeriod: profile.noticePeriod,
+    resume: profile.resume || {},
     jobPreferences: {
       targetRole: profile.role,
       jobKeywords: profile.jobKeywords,

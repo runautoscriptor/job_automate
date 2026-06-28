@@ -31,14 +31,46 @@
     "New Delhi"
   ],
   "noticePeriod": "Immediate",
+  "availabilityToJoin": "Immediate",
+  "willingToRelocate": "Yes",
+  "shiftAvailability": "Yes",
+  "workModePreference": "Work from office",
+  "weekendSupportAvailability": "Yes",
+  "interviewAvailability": "Yes",
   "currentCTC": "2,40,000",
   "expectedCTC": "4,00,000",
   "education": {
     "degree": "B.Tech Computer Science",
     "cgpa": "7.69"
   },
+  "experienceBySkill": {
+    "qaTesting": "1+ Years",
+    "manualTesting": "1+ Years",
+    "automationTesting": "1+ Years",
+    "apiTesting": "1+ Years",
+    "playwright": "1+ Years",
+    "cypress": "6 Months",
+    "postman": "1+ Years",
+    "jira": "1+ Years",
+    "agileScrum": "1+ Years",
+    "regressionTesting": "1+ Years",
+    "smokeTesting": "1+ Years",
+    "sanityTesting": "1+ Years",
+    "uat": "1+ Years",
+    "crossBrowserTesting": "1+ Years",
+    "webApplicationTesting": "1+ Years"
+  },
+  "knowledge": {
+    "sql": "Basic",
+    "testrail": "No",
+    "bugTracking": "Jira"
+  },
   "experienceSummary": "QA Engineer with 1+ year experience in Manual Testing, API Testing, Web Application Testing, Playwright, Cypress, Postman, Jira and Agile methodologies.",
   "professionalSummary": "QA Engineer with 1+ year experience in Manual Testing, API Testing, Web Application Testing, Playwright, Cypress, Postman, Jira and Agile methodologies.",
+  "resume": {
+    "source": "google-drive",
+    "downloadUrl": "https://drive.google.com/uc?export=download&id=1zrqgH2ihNyvnOZndI3Dy2WMxIzF3FB0n"
+  },
   "jobKeywords": [
     "QA Engineer",
     "Manual Tester",

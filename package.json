@@ -12,8 +12,12 @@
     "test:nvites:headed": "playwright test tests/notifications/processNvites.spec.js --headed",
     "test:recommendations": "playwright test tests/recommendations/processRecommendations.spec.js",
     "test:recommendations:headed": "playwright test tests/recommendations/processRecommendations.spec.js --headed",
+    "test:full": "playwright test tests/recommendations/processRecommendations.spec.js",
+    "test:full:headed": "playwright test tests/recommendations/processRecommendations.spec.js --headed",
     "test:profile": "playwright test tests/profile",
     "test:profile:headed": "playwright test tests/profile/updateProfile.spec.js --headed",
+    "test:resume": "playwright test tests/profile/updateResume.spec.js",
+    "test:resume:headed": "playwright test tests/profile/updateResume.spec.js --headed",
     "test:headed": "playwright test --headed",
     "report": "playwright show-report reports/html-report"
   },

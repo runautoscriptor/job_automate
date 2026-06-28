@@ -18,9 +18,12 @@ function buildJobModuleSummary({
     totalKeywordsProcessed: applicationResults.length,
     totalJobsReviewed: sumBy(searchResults, 'jobsConsidered'),
     totalApplicationsSubmitted: sumBy(applicationResults, 'applicationsSubmitted'),
+    questionsAnswered: sumBy(attemptedJobResults, 'questionsAnswered'),
+    questionsSkipped: sumBy(attemptedJobResults, 'questionsSkipped'),
     alreadyAppliedCount: countByStatus(attemptedJobResults, 'already-applied'),
     skippedCount: countSkippedStatuses(attemptedJobResults),
-    unknownQuestionsLogged: sumBy(attemptedJobResults, 'unknownQuestionsLogged')
+    unknownQuestionsLogged: sumBy(attemptedJobResults, 'unknownQuestionsLogged'),
+    applicationsFailed: countSkippedStatuses(attemptedJobResults)
   };
 }
 
@@ -31,7 +34,10 @@ function buildNviteSummary(reviewResults = []) {
     alreadyApplied: 0,
     notInterested: 0,
     skipped: 0,
-    unknownQuestionsLogged: sumBy(reviewResults, 'unknownQuestionsLogged')
+    questionsAnswered: sumBy(reviewResults, 'questionsAnswered'),
+    questionsSkipped: sumBy(reviewResults, 'questionsSkipped'),
+    unknownQuestionsLogged: sumBy(reviewResults, 'unknownQuestionsLogged'),
+    applicationsFailed: countSkippedStatuses(reviewResults)
   };
 
   for (const result of reviewResults) {
@@ -64,7 +70,10 @@ function buildRecommendationSummary(reviewResults = [], options = {}) {
     appliedSuccessfully: 0,
     alreadyApplied: 0,
     skipped: 0,
-    unknownQuestionsLogged: sumBy(reviewResults, 'unknownQuestionsLogged')
+    questionsAnswered: sumBy(reviewResults, 'questionsAnswered'),
+    questionsSkipped: sumBy(reviewResults, 'questionsSkipped'),
+    unknownQuestionsLogged: sumBy(reviewResults, 'unknownQuestionsLogged'),
+    applicationsFailed: countSkippedStatuses(reviewResults)
   };
 
   for (const result of reviewResults) {

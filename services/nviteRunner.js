@@ -89,6 +89,8 @@ async function runNviteFlow({
     reviewResults.push(
       createNviteResult(details, applicationResult.status, {
         matchingKeywords: matchResult.matchingKeywords.join(', '),
+        questionsAnswered: applicationResult.questionsAnswered || 0,
+        questionsSkipped: applicationResult.questionsSkipped || 0,
         unknownQuestionsLogged: applicationResult.unknownQuestionsLogged || 0
       })
     );

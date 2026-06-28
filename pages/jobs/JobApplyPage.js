@@ -54,6 +54,8 @@ class JobApplyPage {
 
     if (await this.isAlreadyApplied({ root })) {
       return this.createResult(normalizedJob, 'already-applied', {
+        questionsAnswered: 0,
+        questionsSkipped: 0,
         unknownQuestionsLogged: 0
       });
     }
@@ -64,6 +66,8 @@ class JobApplyPage {
       if (!hasApplyButton) {
         await captureNamedScreenshot(this.page, `${normalizedJob.title}-missing-apply-button`);
         return this.createResult(normalizedJob, 'skipped-no-apply-button', {
+          questionsAnswered: 0,
+          questionsSkipped: 0,
           unknownQuestionsLogged: 0
         });
       }
@@ -76,32 +80,34 @@ class JobApplyPage {
 
     if (await this.isApplicationSuccessful()) {
       return this.createResult(normalizedJob, 'applied', {
+        questionsAnswered: 0,
+        questionsSkipped: 0,
         unknownQuestionsLogged: 0
       });
     }
 
     if (await this.isAlreadyApplied({ root })) {
       return this.createResult(normalizedJob, 'already-applied', {
+        questionsAnswered: 0,
+        questionsSkipped: 0,
         unknownQuestionsLogged: 0
       });
     }
 
-    const screeningSummary = await this.answerVisibleScreeningQuestions();
-
-    if (screeningSummary.attempted) {
-      await this.submitVisibleApplicationStep();
-      await this.page.waitForTimeout(2500);
-      await this.handleResumePromptIfVisible();
-    }
+    const screeningSummary = await this.processAllVisibleScreeningQuestions(normalizedJob);
 
     if (await this.isApplicationSuccessful()) {
       return this.createResult(normalizedJob, 'applied', {
+        questionsAnswered: screeningSummary.answeredCount,
+        questionsSkipped: screeningSummary.unsupportedCount,
         unknownQuestionsLogged: screeningSummary.unknownQuestionsLogged
       });
     }
 
     if (await this.isAlreadyApplied({ root })) {
       return this.createResult(normalizedJob, 'already-applied', {
+        questionsAnswered: screeningSummary.answeredCount,
+        questionsSkipped: screeningSummary.unsupportedCount,
         unknownQuestionsLogged: screeningSummary.unknownQuestionsLogged
       });
     }
@@ -115,6 +121,8 @@ class JobApplyPage {
         ? 'skipped-unsupported-screening'
         : 'skipped-needs-review',
       {
+        questionsAnswered: screeningSummary.answeredCount,
+        questionsSkipped: screeningSummary.unsupportedCount,
         unknownQuestionsLogged: screeningSummary.unknownQuestionsLogged
       }
     );
@@ -145,7 +153,59 @@ class JobApplyPage {
     return true;
   }
 
-  async answerVisibleScreeningQuestions() {
+  async processAllVisibleScreeningQuestions(job) {
+    const aggregateSummary = {
+      attempted: false,
+      answeredCount: 0,
+      unsupportedCount: 0,
+      unknownQuestionsLogged: 0
+    };
+    let previousSignature = '';
+
+    for (let cycle = 0; cycle < 10; cycle += 1) {
+      const cycleSummary = await this.answerVisibleScreeningQuestions(job);
+
+      if (!cycleSummary.present) {
+        break;
+      }
+
+      aggregateSummary.attempted = aggregateSummary.attempted || cycleSummary.attempted;
+      aggregateSummary.answeredCount += cycleSummary.answeredCount;
+      aggregateSummary.unsupportedCount += cycleSummary.unsupportedCount;
+      aggregateSummary.unknownQuestionsLogged += cycleSummary.unknownQuestionsLogged;
+
+      const signature = cycleSummary.signatures.join(' || ');
+      const canContinue =
+        cycleSummary.answeredCount > 0 || signature !== previousSignature;
+
+      if (!canContinue) {
+        break;
+      }
+
+      const submitted = await this.submitVisibleApplicationStep();
+
+      if (!submitted) {
+        break;
+      }
+
+      previousSignature = signature;
+
+      await this.page.waitForTimeout(2000);
+      await this.handleResumePromptIfVisible();
+
+      if (await this.isApplicationSuccessful()) {
+        break;
+      }
+
+      if (await this.isAlreadyApplied()) {
+        break;
+      }
+    }
+
+    return aggregateSummary;
+  }
+
+  async answerVisibleScreeningQuestions(job) {
     const questionFields = await this.page.evaluate(() => {
       function isVisible(element) {
         if (!element) {
@@ -298,20 +358,32 @@ class JobApplyPage {
 
     if (questionFields.length === 0) {
       return {
+        present: false,
         attempted: false,
-        unsupportedCount: 0
+        answeredCount: 0,
+        unsupportedCount: 0,
+        unknownQuestionsLogged: 0,
+        signatures: []
       };
     }
 
     let answeredCount = 0;
     let unsupportedCount = 0;
     let unknownQuestionsLogged = 0;
+    const questionSignatures = [];
 
     for (const field of questionFields) {
       const questionText = field.questionText || field.placeholder;
+      const questionContext = {
+        jobTitle: job.title,
+        jobUrl: job.url
+      };
+      questionSignatures.push(`${field.type}:${questionText}`);
 
       if (field.type === 'select') {
-        const choiceResolution = resolveChoiceAnswer(questionText, field.options);
+        const choiceResolution = resolveChoiceAnswer(questionText, field.options, {
+          context: questionContext
+        });
         const optionToSelect = choiceResolution.status === 'known' ? choiceResolution.answer : null;
 
         if (!optionToSelect) {
@@ -327,7 +399,9 @@ class JobApplyPage {
 
       if (field.type === 'radio-group') {
         const optionLabels = field.options.map((option) => option.label);
-        const choiceResolution = resolveChoiceAnswer(questionText, optionLabels);
+        const choiceResolution = resolveChoiceAnswer(questionText, optionLabels, {
+          context: questionContext
+        });
         const preferredOption = choiceResolution.status === 'known' ? choiceResolution.answer : null;
         const matchingOption = field.options.find((option) => option.label === preferredOption);
 
@@ -342,7 +416,9 @@ class JobApplyPage {
         continue;
       }
 
-      const answerText = getTextAnswer(questionText);
+      const answerText = getTextAnswer(questionText, {
+        context: questionContext
+      });
 
       if (!answerText) {
         unsupportedCount += 1;
@@ -373,10 +449,12 @@ class JobApplyPage {
     );
 
     return {
+      present: true,
       attempted: answeredCount > 0 || unsupportedCount > 0,
       answeredCount,
       unsupportedCount,
-      unknownQuestionsLogged
+      unknownQuestionsLogged,
+      signatures: questionSignatures
     };
   }
 

@@ -1,0 +1,869 @@
+{
+  "textQuestions": [
+    {
+      "id": "total-experience",
+      "questionPatterns": [
+        "total experience",
+        "overall experience",
+        "years of experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "totalExperience"
+      }
+    },
+    {
+      "id": "relevant-experience-qa",
+      "questionPatterns": [
+        "relevant experience in qa",
+        "experience in qa testing",
+        "qa testing experience",
+        "quality assurance experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.qaTesting"
+      }
+    },
+    {
+      "id": "manual-testing-experience",
+      "questionPatterns": [
+        "manual testing experience",
+        "experience in manual testing",
+        "years in manual testing",
+        "manual tester experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.manualTesting"
+      }
+    },
+    {
+      "id": "automation-testing-experience",
+      "questionPatterns": [
+        "automation testing experience",
+        "experience in automation testing",
+        "automation tester experience",
+        "test automation experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.automationTesting"
+      }
+    },
+    {
+      "id": "api-testing-experience",
+      "questionPatterns": [
+        "api testing experience",
+        "experience in api testing",
+        "rest api testing experience",
+        "web service testing experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.apiTesting"
+      }
+    },
+    {
+      "id": "playwright-experience",
+      "questionPatterns": [
+        "playwright experience",
+        "experience in playwright",
+        "automation with playwright",
+        "years in playwright"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.playwright"
+      }
+    },
+    {
+      "id": "cypress-experience",
+      "questionPatterns": [
+        "cypress experience",
+        "experience in cypress",
+        "automation with cypress",
+        "years in cypress"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.cypress"
+      }
+    },
+    {
+      "id": "postman-experience",
+      "questionPatterns": [
+        "postman experience",
+        "experience in postman",
+        "api testing with postman",
+        "years in postman"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.postman"
+      }
+    },
+    {
+      "id": "jira-experience",
+      "questionPatterns": [
+        "jira experience",
+        "experience in jira",
+        "bug tracking tool experience",
+        "defect tracking experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.jira"
+      }
+    },
+    {
+      "id": "agile-experience",
+      "questionPatterns": [
+        "agile experience",
+        "scrum experience",
+        "experience in agile scrum",
+        "working in agile methodology"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.agileScrum"
+      }
+    },
+    {
+      "id": "regression-testing-experience",
+      "questionPatterns": [
+        "regression testing experience",
+        "experience in regression testing",
+        "regression test experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.regressionTesting"
+      }
+    },
+    {
+      "id": "smoke-testing-experience",
+      "questionPatterns": [
+        "smoke testing experience",
+        "experience in smoke testing",
+        "smoke test experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.smokeTesting"
+      }
+    },
+    {
+      "id": "sanity-testing-experience",
+      "questionPatterns": [
+        "sanity testing experience",
+        "experience in sanity testing",
+        "sanity test experience"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.sanityTesting"
+      }
+    },
+    {
+      "id": "uat-experience",
+      "questionPatterns": [
+        "uat experience",
+        "user acceptance testing experience",
+        "experience in uat"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.uat"
+      }
+    },
+    {
+      "id": "cross-browser-testing-experience",
+      "questionPatterns": [
+        "cross browser testing experience",
+        "cross-browser testing experience",
+        "experience in cross browser testing"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.crossBrowserTesting"
+      }
+    },
+    {
+      "id": "web-application-testing-experience",
+      "questionPatterns": [
+        "web application testing experience",
+        "web app testing experience",
+        "experience in web testing"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.webApplicationTesting"
+      }
+    },
+    {
+      "id": "sql-knowledge",
+      "questionPatterns": [
+        "sql knowledge",
+        "knowledge of sql",
+        "experience in sql",
+        "database query knowledge"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "knowledge.sql"
+      }
+    },
+    {
+      "id": "current-location",
+      "questionPatterns": [
+        "current location",
+        "present location",
+        "current city",
+        "where are you based"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "location"
+      }
+    },
+    {
+      "id": "preferred-location",
+      "questionPatterns": [
+        "preferred location",
+        "preferred city",
+        "preferred work location",
+        "location preference"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "preferredLocations"
+      }
+    },
+    {
+      "id": "willing-relocate",
+      "questionPatterns": [
+        "willing to relocate",
+        "can you relocate",
+        "open to relocation",
+        "ready to relocate"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "willingToRelocate"
+      }
+    },
+    {
+      "id": "notice-period",
+      "questionPatterns": [
+        "notice period",
+        "when can you join",
+        "available to join",
+        "availability to join"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "noticePeriod"
+      }
+    },
+    {
+      "id": "immediate-joining",
+      "questionPatterns": [
+        "available immediately",
+        "immediate joining",
+        "can join immediately",
+        "join immediately"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "availabilityToJoin"
+      }
+    },
+    {
+      "id": "shift-availability",
+      "questionPatterns": [
+        "comfortable with shifts",
+        "shift availability",
+        "can work in shifts",
+        "rotational shifts"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "shiftAvailability"
+      }
+    },
+    {
+      "id": "night-shift",
+      "questionPatterns": [
+        "comfortable with night shift",
+        "night shift",
+        "work in night shifts"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "shiftAvailability"
+      }
+    },
+    {
+      "id": "weekend-support",
+      "questionPatterns": [
+        "weekend support",
+        "weekend availability",
+        "working on weekends",
+        "weekend work"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "weekendSupportAvailability"
+      }
+    },
+    {
+      "id": "work-mode-preference",
+      "questionPatterns": [
+        "preferred work mode",
+        "work from office",
+        "office work",
+        "hybrid or office"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "workModePreference"
+      }
+    },
+    {
+      "id": "current-ctc",
+      "questionPatterns": [
+        "current ctc",
+        "current salary",
+        "current package",
+        "current compensation"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "currentCTC"
+      }
+    },
+    {
+      "id": "expected-ctc",
+      "questionPatterns": [
+        "expected ctc",
+        "expected salary",
+        "expected package",
+        "salary expectation"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "expectedCTC"
+      }
+    },
+    {
+      "id": "salary-negotiable",
+      "questionPatterns": [
+        "salary negotiable",
+        "is your salary negotiable",
+        "flexible on salary"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I am open to discussing it based on the role and responsibilities."
+      }
+    },
+    {
+      "id": "highest-qualification",
+      "questionPatterns": [
+        "highest qualification",
+        "educational qualification",
+        "highest education",
+        "degree qualification"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "education.degree"
+      }
+    },
+    {
+      "id": "cgpa",
+      "questionPatterns": [
+        "cgpa",
+        "graduation cgpa",
+        "college cgpa",
+        "academic score"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "education.cgpa"
+      }
+    },
+    {
+      "id": "current-role",
+      "questionPatterns": [
+        "current role",
+        "current designation",
+        "present role",
+        "designation"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "role"
+      }
+    },
+    {
+      "id": "applied-role",
+      "questionPatterns": [
+        "role are you applying for",
+        "position are you applying for",
+        "applied role"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "role"
+      }
+    },
+    {
+      "id": "professional-summary",
+      "questionPatterns": [
+        "tell us about yourself",
+        "professional summary",
+        "profile summary",
+        "introduce yourself"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "professionalSummary"
+      }
+    },
+    {
+      "id": "primary-skills",
+      "questionPatterns": [
+        "primary skills",
+        "key skills",
+        "core skills",
+        "main skills"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "primarySkills"
+      }
+    },
+    {
+      "id": "all-skills",
+      "questionPatterns": [
+        "technical skills",
+        "skills do you have",
+        "testing skills",
+        "tools and technologies"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "skills"
+      }
+    },
+    {
+      "id": "bug-tracking-tool",
+      "questionPatterns": [
+        "bug tracking tool",
+        "defect tracking tool",
+        "issue tracking tool"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "knowledge.bugTracking"
+      }
+    },
+    {
+      "id": "testrail-experience",
+      "questionPatterns": [
+        "experience with testrail",
+        "testrail knowledge",
+        "worked on testrail"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "knowledge.testrail"
+      }
+    },
+    {
+      "id": "bug-life-cycle",
+      "questionPatterns": [
+        "bug life cycle",
+        "defect life cycle",
+        "understand defect lifecycle"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I have practical understanding of the bug life cycle, including defect logging, tracking, retesting, and closure."
+      }
+    },
+    {
+      "id": "test-case-writing",
+      "questionPatterns": [
+        "test case writing",
+        "write test cases",
+        "experience creating test cases"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I have experience writing clear and reusable test cases, test scenarios, and checklists for web applications."
+      }
+    },
+    {
+      "id": "stlc-knowledge",
+      "questionPatterns": [
+        "stlc knowledge",
+        "software testing life cycle",
+        "knowledge of stlc"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I have a good understanding of the Software Testing Life Cycle, including requirement analysis, test planning, test design, execution, defect tracking, and closure."
+      }
+    },
+    {
+      "id": "sdlc-knowledge",
+      "questionPatterns": [
+        "sdlc knowledge",
+        "software development life cycle",
+        "knowledge of sdlc"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I understand the Software Development Life Cycle and how QA activities align with each phase."
+      }
+    },
+    {
+      "id": "rest-api-knowledge",
+      "questionPatterns": [
+        "rest api knowledge",
+        "knowledge of rest api",
+        "understanding of api testing"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I have hands-on experience validating REST APIs using Postman, status code checks, response validation, and request/response analysis."
+      }
+    },
+    {
+      "id": "automation-framework-knowledge",
+      "questionPatterns": [
+        "automation framework knowledge",
+        "test automation framework",
+        "framework development experience"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "I have worked with automation testing using Playwright and Cypress and understand reusable framework concepts such as page objects, locators, utilities, and reporting."
+      }
+    },
+    {
+      "id": "agile-ceremonies",
+      "questionPatterns": [
+        "agile ceremonies",
+        "sprint ceremonies",
+        "scrum ceremonies"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I am familiar with sprint planning, daily stand-ups, backlog refinement, sprint review, and retrospective meetings."
+      }
+    },
+    {
+      "id": "defect-reporting",
+      "questionPatterns": [
+        "defect reporting",
+        "bug reporting",
+        "report defects"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I have experience identifying, documenting, prioritizing, and tracking defects clearly using Jira."
+      }
+    },
+    {
+      "id": "communication-skills",
+      "questionPatterns": [
+        "communication skills",
+        "verbal communication",
+        "written communication"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I am comfortable communicating defects, test progress, and clarifications with developers, testers, and stakeholders."
+      }
+    },
+    {
+      "id": "learning-new-tools",
+      "questionPatterns": [
+        "learn new tools",
+        "quick learner",
+        "adapt to new technology"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I am a quick learner and comfortable adapting to new tools, workflows, and project requirements."
+      }
+    },
+    {
+      "id": "availability-interview",
+      "questionPatterns": [
+        "available for interview",
+        "interview availability",
+        "can attend interview"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "interviewAvailability"
+      }
+    },
+    {
+      "id": "automation-language",
+      "questionPatterns": [
+        "programming language for automation",
+        "language do you use for automation",
+        "automation scripting language"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "I am comfortable with JavaScript for Playwright-based automation and also have working exposure to automation concepts in Cypress."
+      }
+    },
+    {
+      "id": "browser-testing",
+      "questionPatterns": [
+        "browser testing",
+        "tested across browsers",
+        "multi browser testing"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.crossBrowserTesting"
+      }
+    },
+    {
+      "id": "api-tools",
+      "questionPatterns": [
+        "api testing tools",
+        "tool used for api testing",
+        "which tool for api testing"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "I use Postman for API testing and validation."
+      }
+    },
+    {
+      "id": "test-documentation",
+      "questionPatterns": [
+        "test documentation",
+        "documentation experience",
+        "maintain testing documents"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I am comfortable maintaining test cases, test scenarios, defect reports, and execution notes."
+      }
+    },
+    {
+      "id": "database-testing",
+      "questionPatterns": [
+        "database testing",
+        "sql query validation",
+        "backend data validation"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "I have basic SQL knowledge and can perform data validation and simple query verification when required."
+      }
+    },
+    {
+      "id": "qa-domain-fit",
+      "questionPatterns": [
+        "why should we hire you",
+        "why are you fit for this role",
+        "why do you suit this role"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "I have hands-on QA experience in manual testing, API testing, and automation using Playwright and Cypress, along with a strong focus on quality, defect reporting, and continuous learning."
+      }
+    },
+    {
+      "id": "team-collaboration",
+      "questionPatterns": [
+        "work with team",
+        "team collaboration",
+        "cross functional team"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Yes, I work well with developers, testers, and business stakeholders to clarify requirements, report defects, and ensure smooth delivery."
+      }
+    },
+    {
+      "id": "qa-testing-years",
+      "questionPatterns": [
+        "years of experience in qa testing",
+        "how many years in qa testing",
+        "experience do you have in qa testing"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.qaTesting"
+      }
+    },
+    {
+      "id": "manual-functional-testing-years",
+      "questionPatterns": [
+        "manual functional testing",
+        "manual functional testing experience",
+        "experience in manual functional testing"
+      ],
+      "answerSource": {
+        "type": "profile",
+        "path": "experienceBySkill.manualTesting"
+      }
+    },
+    {
+      "id": "llm-rag-technique",
+      "questionPatterns": [
+        "combines external knowledge with an llm",
+        "external knowledge with llm",
+        "which technique combines external knowledge with llm"
+      ],
+      "answerSource": {
+        "type": "static",
+        "value": "Retrieval-Augmented Generation (RAG)."
+      }
+    }
+  ],
+  "choiceQuestions": [
+    {
+      "id": "choice-immediate-join",
+      "questionPatterns": [
+        "when can you join",
+        "notice period",
+        "available to join",
+        "joining availability"
+      ],
+      "preferredOptionPatterns": [
+        "immediate",
+        "immediately",
+        "0 days",
+        "15 days or less",
+        "less than 15 days"
+      ]
+    },
+    {
+      "id": "choice-relocate",
+      "questionPatterns": [
+        "willing to relocate",
+        "open to relocation",
+        "can you relocate"
+      ],
+      "preferredOptionPatterns": [
+        "yes",
+        "willing",
+        "open"
+      ]
+    },
+    {
+      "id": "choice-shifts",
+      "questionPatterns": [
+        "comfortable with shifts",
+        "night shift",
+        "rotational shift",
+        "shift work"
+      ],
+      "preferredOptionPatterns": [
+        "yes",
+        "comfortable",
+        "rotational",
+        "night"
+      ]
+    },
+    {
+      "id": "choice-work-mode",
+      "questionPatterns": [
+        "preferred work mode",
+        "work from office",
+        "hybrid or office"
+      ],
+      "preferredOptionPatterns": [
+        "work from office",
+        "office",
+        "hybrid"
+      ]
+    },
+    {
+      "id": "choice-weekend",
+      "questionPatterns": [
+        "weekend support",
+        "weekend work",
+        "work on weekends"
+      ],
+      "preferredOptionPatterns": [
+        "yes",
+        "available",
+        "comfortable"
+      ]
+    },
+    {
+      "id": "choice-location",
+      "questionPatterns": [
+        "preferred location",
+        "work location",
+        "location preference"
+      ],
+      "preferredOptionPatterns": [
+        "noida",
+        "greater noida",
+        "gurugram",
+        "new delhi"
+      ]
+    },
+    {
+      "id": "choice-api-tool",
+      "questionPatterns": [
+        "api testing tool",
+        "tool used for api testing"
+      ],
+      "preferredOptionPatterns": [
+        "postman"
+      ]
+    },
+    {
+      "id": "choice-bug-tool",
+      "questionPatterns": [
+        "defect tracking tool",
+        "bug tracking tool"
+      ],
+      "preferredOptionPatterns": [
+        "jira"
+      ]
+    },
+    {
+      "id": "choice-automation-tool",
+      "questionPatterns": [
+        "automation tool",
+        "framework used for automation",
+        "ui automation tool"
+      ],
+      "preferredOptionPatterns": [
+        "playwright",
+        "cypress"
+      ]
+    },
+    {
+      "id": "choice-sql-level",
+      "questionPatterns": [
+        "sql knowledge",
+        "sql proficiency",
+        "database skill level"
+      ],
+      "preferredOptionPatterns": [
+        "basic",
+        "beginner",
+        "intermediate"
+      ]
+    }
+  ]
+}

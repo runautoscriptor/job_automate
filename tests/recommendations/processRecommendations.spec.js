@@ -4,13 +4,14 @@ const { runProfileRefreshFlow } = require('../../services/profileRefreshRunner')
 const { runJobSearchAndApplyFlow } = require('../../services/jobSearchRunner');
 const { runNviteFlow } = require('../../services/nviteRunner');
 const { runRecommendationFlow } = require('../../services/recommendationRunner');
+const { runResumeUpdateFlow } = require('../../services/resumeUpdateRunner');
 const {
   printModuleSummary,
   printReportSection
 } = require('../../utils/reportPrinter');
 
 test.describe('Recommendation Module', () => {
-  test('should complete modules 1 to 4 in order and process the first 10 recommendations', async ({
+  test('should complete modules 1 to 5 in order and process recommendations before resume update', async ({
     loginPage,
     homePage,
     profilePage,
@@ -50,6 +51,10 @@ test.describe('Recommendation Module', () => {
       recommendationPage,
       jobApplyPage
     });
+    const module5Result = await runResumeUpdateFlow({
+      homePage,
+      profilePage
+    });
 
     printReportSection('Job Search Results', jobReport.searchResults);
     printReportSection('Job Application Results', jobReport.applicationResults);
@@ -61,6 +66,7 @@ test.describe('Recommendation Module', () => {
     printModuleSummary('Module 2 Results', jobReport.summary);
     printModuleSummary('Module 3 Results', nviteReport.summary);
     printModuleSummary('Module 4 Results', recommendationReport.summary);
+    printModuleSummary('Module 5 Results', module5Result);
 
     expect(recommendationReport.summary.totalRecommendationsChecked).toBeGreaterThanOrEqual(0);
   });
