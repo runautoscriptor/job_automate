@@ -8,6 +8,8 @@ screenshots/**
 !screenshots/.gitkeep
 temp/**
 !temp/.gitkeep
+data/**
+!data/.gitkeep
 
 auth/*.json
 playwright-report/

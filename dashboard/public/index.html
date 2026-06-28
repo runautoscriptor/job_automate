@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Naukri Automation Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-card">
+        <p class="eyebrow">Local Control Center</p>
+        <h1>Naukri Automation Dashboard</h1>
+        <p class="hero-copy">
+          Run, stop, schedule, and review your existing Playwright workflow from one local dashboard.
+        </p>
+
+        <div class="control-grid">
+          <button id="runButton" class="primary-action">Run</button>
+          <button id="stopButton" class="secondary-action">Stop</button>
+          <button id="autoRunButton" class="secondary-action">Auto Run: Off</button>
+          <button id="refreshButton" class="secondary-action">View Results</button>
+        </div>
+
+        <div class="status-strip">
+          <span class="status-pill" id="runStatusPill">Idle</span>
+          <span id="currentRunLabel">No run in progress</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Latest Results</h2>
+          <p id="latestRunMeta">No run data yet.</p>
+        </div>
+
+        <div class="module-grid" id="moduleGrid">
+          <article class="module-card">
+            <h3>Profile Refresh</h3>
+            <pre>Waiting for first run...</pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Recent Runs</h2>
+          <p>Newest runs appear first.</p>
+        </div>
+        <div id="recentRuns" class="recent-runs"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Live Logs</h2>
+          <p>Current or selected run output.</p>
+        </div>
+        <pre id="logsViewer" class="logs-viewer">Logs will appear here.</pre>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

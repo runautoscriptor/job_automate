@@ -19,6 +19,7 @@
     "test:resume": "playwright test tests/profile/updateResume.spec.js",
     "test:resume:headed": "playwright test tests/profile/updateResume.spec.js --headed",
     "test:headed": "playwright test --headed",
+    "dashboard": "node dashboard/server.js",
     "report": "playwright show-report reports/html-report"
   },
   "devDependencies": {

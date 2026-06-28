@@ -8,7 +8,8 @@ const { buildRecommendationSummary } = require('../utils/reportPrinter');
 async function runRecommendationFlow({
   homePage,
   recommendationPage,
-  jobApplyPage
+  jobApplyPage,
+  stopMonitor
 }) {
   const candidateProfile = getCandidateProfileView();
   const maxRecommendationsToCheck = getNumberEnv(
@@ -32,6 +33,7 @@ async function runRecommendationFlow({
   let matchingJobsProcessed = 0;
 
   for (const recommendation of recommendations) {
+    await stopMonitor?.throwIfStopRequested?.();
     const matchResult = matchesCandidatePreferences({
       title: recommendation.title,
       description: recommendation.previewText,

@@ -6,7 +6,8 @@ const { logger } = require('../utils/logger');
 async function runNviteFlow({
   homePage,
   nvitePage,
-  jobApplyPage
+  jobApplyPage,
+  stopMonitor
 }) {
   const candidateProfile = getCandidateProfileView();
   const processedInvitations = new Set();
@@ -15,6 +16,7 @@ async function runNviteFlow({
   await ensureNviteContext({ homePage, nvitePage });
 
   while (true) {
+    await stopMonitor?.throwIfStopRequested?.();
     await ensureNviteContext({ homePage, nvitePage });
 
     const visibleInvitations = await nvitePage.getVisibleInvitationCards();

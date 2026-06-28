@@ -4,7 +4,8 @@ const { logger } = require('../utils/logger');
 
 async function runResumeUpdateFlow({
   homePage,
-  profilePage
+  profilePage,
+  stopMonitor
 }) {
   logger.info('==============================');
   logger.info('Resume Module Started');
@@ -14,6 +15,7 @@ async function runResumeUpdateFlow({
   let preparedResume = null;
 
   try {
+    await stopMonitor?.throwIfStopRequested?.();
     await homePage.navigateToProfile();
 
     preparedResume = await prepareLatestResume();
@@ -23,6 +25,7 @@ async function runResumeUpdateFlow({
     logger.info('Temporary File Created');
     logger.info('Uploading Resume...');
 
+    await stopMonitor?.throwIfStopRequested?.();
     const uploadedResumeInfo = await profilePage.uploadResume(preparedResume.localFilePath);
 
     logger.info('Resume Updated Successfully');

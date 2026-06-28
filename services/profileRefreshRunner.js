@@ -1,7 +1,9 @@
 async function runProfileRefreshFlow({
   homePage,
-  profilePage
+  profilePage,
+  stopMonitor
 }) {
+  await stopMonitor?.throwIfStopRequested?.();
   await homePage.navigateToProfile();
   await profilePage.clickEditProfile();
   await profilePage.clickSaveProfile();

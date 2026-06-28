@@ -5,7 +5,8 @@ const { buildJobModuleSummary } = require('../utils/reportPrinter');
 
 async function runJobSearchAndApplyFlow({
   jobSearchPage,
-  jobApplyPage
+  jobApplyPage,
+  stopMonitor
 }) {
   const maxApplicationsPerKeyword = Math.min(
     1,
@@ -29,6 +30,7 @@ async function runJobSearchAndApplyFlow({
   const attemptedJobResults = [];
 
   for (const keyword of searchCriteria.keywords) {
+    await stopMonitor?.throwIfStopRequested?.();
     logger.info(`Starting Phase 2 search flow for keyword "${keyword}"`);
 
     await jobSearchPage.gotoKeywordResults(keyword, searchCriteria.experienceYears);
@@ -56,7 +58,8 @@ async function runJobSearchAndApplyFlow({
       keyword,
       matchingJobs,
       maxApplicationsPerKeyword,
-      jobApplyPage
+      jobApplyPage,
+      stopMonitor
     });
 
     applicationResults.push(keywordOutcome.summary);
@@ -85,12 +88,14 @@ async function applyToSingleJobForKeyword({
   keyword,
   matchingJobs,
   maxApplicationsPerKeyword,
-  jobApplyPage
+  jobApplyPage,
+  stopMonitor
 }) {
   const attemptedJobs = [];
   let applicationsSubmitted = 0;
 
   for (const job of matchingJobs) {
+    await stopMonitor?.throwIfStopRequested?.();
     if (applicationsSubmitted >= maxApplicationsPerKeyword) {
       break;
     }
