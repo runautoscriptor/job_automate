@@ -117,7 +117,17 @@ class ProfilePage {
             Boolean(currentResumeInfo.uploadedOn) &&
             currentResumeInfo.uploadedOn !== previousResumeInfo.uploadedOn;
 
-          return hasExpectedFileName && (fileNameChanged || dateChanged);
+          if (!hasExpectedFileName) {
+            return false;
+          }
+
+          if (fileNameChanged || dateChanged) {
+            return true;
+          }
+
+          // When the resume name is intentionally stable across runs, the visible
+          // date may also stay the same for repeat uploads on the same day.
+          return previousResumeInfo.fileName === uploadedFileName;
         },
         {
           timeout: 60000

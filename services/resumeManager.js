@@ -5,6 +5,7 @@ const https = require('https');
 const { loadCandidateProfile } = require('../utils/candidateProfile');
 
 const TEMP_DIRECTORY_PATH = path.resolve(process.cwd(), 'temp');
+const DEFAULT_RESUME_FILE_BASENAME = 'VikasKumarSingh_Resume';
 const SUPPORTED_RESUME_EXTENSIONS = new Set(['.pdf', '.doc', '.docx', '.rtf']);
 
 async function prepareLatestResume() {
@@ -30,7 +31,7 @@ async function prepareLatestResume() {
   const extension = detectResumeExtension(downloadUrl);
   const localFilePath = path.join(
     TEMP_DIRECTORY_PATH,
-    buildTempResumeFileName(extension)
+    buildTempResumeFileName(extension, resumeConfig.fileName)
   );
 
   removeFileIfExists(localFilePath);
@@ -48,8 +49,19 @@ async function prepareLatestResume() {
   };
 }
 
-function buildTempResumeFileName(extension) {
-  return `latest_resume_${Date.now()}${extension}`;
+function buildTempResumeFileName(extension, configuredFileName) {
+  const normalizedBaseName = sanitizeResumeBaseName(configuredFileName) || DEFAULT_RESUME_FILE_BASENAME;
+  return `${normalizedBaseName}${extension}`;
+}
+
+function sanitizeResumeBaseName(value) {
+  const normalizedValue = String(value || '').trim();
+
+  if (!normalizedValue) {
+    return '';
+  }
+
+  return normalizedValue.replace(/[<>:"/\\|?*\x00-\x1F]+/g, '_');
 }
 
 function getTempDirectoryPath() {
