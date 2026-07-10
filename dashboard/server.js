@@ -1,25 +1,23 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { startAutomationRun, stopAutomationRun } = require('./services/automationController');
-const { readText } = require('./services/fileStore');
-const { PUBLIC_DIR, getRunLogPath } = require('./services/paths');
-const { startScheduler } = require('./services/scheduler');
 const {
-  getDashboardState,
-  initializeDashboardState,
-  listRunSummaries,
-  readRunSummary,
-  updateDashboardState
-} = require('./services/stateStore');
+  getDashboardSnapshot,
+  startAutomationRun,
+  stopAutomationRun
+} = require('./services/automationController');
+const { readLatestRunLogs, getDashboardState, initializeDashboardState, setSelectedProfileId, updateProfileState } = require('./services/stateStore');
+const { PUBLIC_DIR } = require('./services/paths');
+const { AUTO_RUN_TIME_ZONE, getNextAutoRunAt, startScheduler } = require('./services/scheduler');
 
 const PORT = Number(process.env.DASHBOARD_PORT || 8826);
 
 initializeDashboardState();
 
 const scheduler = startScheduler({
-  onAutoRun: async () => {
-    startAutomationRun({ trigger: 'auto' });
+  getState: getDashboardState,
+  onAutoRun: async (profileId) => {
+    startAutomationRun({ trigger: 'auto', profileId });
   }
 });
 
@@ -34,9 +32,7 @@ const server = http.createServer(async (request, response) => {
 
     await serveStaticAsset(response, requestUrl.pathname);
   } catch (error) {
-    writeJson(response, 500, {
-      error: error.message
-    });
+    writeJson(response, 500, { error: error.message });
   }
 });
 
@@ -44,8 +40,8 @@ server.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
     console.error(
       `Dashboard could not start because port ${PORT} is already in use. ` +
-      `Close the existing process or run with a different port, for example: ` +
-      `\$env:DASHBOARD_PORT=3001; npm run dashboard`
+      `Close the existing process or use another port, for example: ` +
+      `$env:DASHBOARD_PORT=8827; npm run dashboard`
     );
     process.exit(1);
   }
@@ -65,73 +61,89 @@ process.on('SIGINT', () => {
 
 async function handleApiRequest(request, response, requestUrl) {
   if (request.method === 'GET' && requestUrl.pathname === '/api/status') {
-    const state = getDashboardState();
-    const latestRuns = listRunSummaries(10);
-    const currentRun = state.currentRunId ? readRunSummary(state.currentRunId) : null;
+    const selectedProfileId = requestUrl.searchParams.get('profileId') || getDashboardState().selectedProfileId;
+    const snapshot = getDashboardSnapshot(selectedProfileId);
+    const selectedProfile = snapshot.selectedProfile;
+    const latestRun = selectedProfile?.latestRun || null;
+    const profileState = selectedProfile?.state || {};
 
     writeJson(response, 200, {
-      state,
-      currentRun,
-      latestRun: latestRuns[0] || null,
-      recentRuns: latestRuns
+      selectedProfileId: snapshot.selectedProfileId,
+      profiles: snapshot.profiles.map((profile) => ({
+        id: profile.id,
+        label: profile.label,
+        configured: profile.configured,
+        state: profile.state,
+        nextAutoRunAt: getNextAutoRunAt(profile.state)
+      })),
+      scheduler: {
+        timeZone: AUTO_RUN_TIME_ZONE
+      },
+      profile: selectedProfile
+        ? {
+            id: selectedProfile.id,
+            label: selectedProfile.label,
+            configured: selectedProfile.configured
+          }
+        : null,
+      state: profileState,
+      currentRun: profileState.currentRunId ? latestRun : null,
+      latestRun,
+      recentRun: latestRun
+    });
+    return;
+  }
+
+  if (request.method === 'POST' && requestUrl.pathname === '/api/profile/select') {
+    const body = await readRequestBody(request);
+    const nextState = setSelectedProfileId(body.profileId);
+
+    writeJson(response, 200, {
+      selectedProfileId: nextState.selectedProfileId
     });
     return;
   }
 
   if (request.method === 'POST' && requestUrl.pathname === '/api/run') {
-    const result = startAutomationRun({ trigger: 'manual' });
+    const body = await readRequestBody(request);
+    const profileId = body.profileId || getDashboardState().selectedProfileId;
+    const result = startAutomationRun({ trigger: 'manual', profileId });
     writeJson(response, result.started ? 202 : 409, result);
     return;
   }
 
   if (request.method === 'POST' && requestUrl.pathname === '/api/stop') {
-    const result = stopAutomationRun();
+    const body = await readRequestBody(request);
+    const profileId = body.profileId || getDashboardState().selectedProfileId;
+    const result = stopAutomationRun(profileId);
     writeJson(response, result.stopped ? 202 : 409, result);
     return;
   }
 
   if (request.method === 'POST' && requestUrl.pathname === '/api/auto-run') {
     const body = await readRequestBody(request);
-    const nextState = updateDashboardState((state) => ({
-      ...state,
-      autoRunEnabled: Boolean(body.enabled)
-    }));
+    const profileId = body.profileId || getDashboardState().selectedProfileId;
+    const nextState = updateProfileState(profileId, {
+      autoRunEnabled: Boolean(body.enabled),
+      autoRunEnabledAt: body.enabled ? new Date().toISOString() : null
+    });
+    const profileState = nextState.profiles[profileId];
 
     writeJson(response, 200, {
-      autoRunEnabled: nextState.autoRunEnabled
+      autoRunEnabled: profileState.autoRunEnabled,
+      nextAutoRunAt: getNextAutoRunAt(profileState)
     });
     return;
   }
 
-  if (request.method === 'GET' && requestUrl.pathname.startsWith('/api/runs/')) {
-    const [, , , runId, resource] = requestUrl.pathname.split('/');
-
-    if (!runId) {
-      writeJson(response, 400, { error: 'runId is required.' });
-      return;
-    }
-
-    if (resource === 'logs') {
-      const logs = readText(getRunLogPath(runId), '');
-      response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end(logs);
-      return;
-    }
-
-    const summary = readRunSummary(runId);
-
-    if (!summary) {
-      writeJson(response, 404, { error: `Run ${runId} was not found.` });
-      return;
-    }
-
-    writeJson(response, 200, summary);
+  if (request.method === 'GET' && requestUrl.pathname === '/api/logs') {
+    const profileId = requestUrl.searchParams.get('profileId') || getDashboardState().selectedProfileId;
+    response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    response.end(readLatestRunLogs(profileId));
     return;
   }
 
-  writeJson(response, 404, {
-    error: 'Route not found.'
-  });
+  writeJson(response, 404, { error: 'Route not found.' });
 }
 
 async function serveStaticAsset(response, pathname) {
@@ -151,28 +163,15 @@ async function serveStaticAsset(response, pathname) {
 }
 
 function getContentType(filePath) {
-  if (filePath.endsWith('.html')) {
-    return 'text/html; charset=utf-8';
-  }
-
-  if (filePath.endsWith('.css')) {
-    return 'text/css; charset=utf-8';
-  }
-
-  if (filePath.endsWith('.js')) {
-    return 'application/javascript; charset=utf-8';
-  }
-
-  if (filePath.endsWith('.json')) {
-    return 'application/json; charset=utf-8';
-  }
-
+  if (filePath.endsWith('.html')) return 'text/html; charset=utf-8';
+  if (filePath.endsWith('.css')) return 'text/css; charset=utf-8';
+  if (filePath.endsWith('.js')) return 'application/javascript; charset=utf-8';
+  if (filePath.endsWith('.json')) return 'application/json; charset=utf-8';
   return 'text/plain; charset=utf-8';
 }
 
 async function readRequestBody(request) {
   const chunks = [];
-
   for await (const chunk of request) {
     chunks.push(chunk);
   }

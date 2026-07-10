@@ -15,24 +15,33 @@ const { getAuthStatePath, hasCompatibleAuthState } = require('../utils/authState
 const { getEnv, getNumberEnv, validateRequiredEnv } = require('../utils/env');
 const { logger } = require('../utils/logger');
 const { allowNaukriLocationAccess } = require('../utils/locationAccess');
-const { createRunSummary } = require('../dashboard/services/stateStore');
+const { replaceLatestRun } = require('../dashboard/services/stateStore');
+const { getProfileById } = require('../dashboard/services/profileRegistry');
 const { clearStopRequest, createStopMonitor, StopRequestedError } = require('../dashboard/services/runControl');
 
 async function main() {
   const runId = process.env.DASHBOARD_RUN_ID;
   const trigger = process.env.DASHBOARD_TRIGGER || 'manual';
+  const profileId = process.env.DASHBOARD_PROFILE_ID || 'profile-1';
+  const profile = getProfileById(profileId);
 
   if (!runId) {
     throw new Error('DASHBOARD_RUN_ID is required to run the dashboard automation workflow.');
   }
 
-  validateRequiredEnv(['NAUKRI_EMAIL', 'NAUKRI_PASSWORD']);
-  clearStopRequest(runId);
+  if (!profile?.configured) {
+    throw new Error(`Dashboard profile "${profileId}" is not configured.`);
+  }
 
-  const stopMonitor = createStopMonitor(runId);
-  const runtime = await createRuntime();
+  validateRequiredEnv(['NAUKRI_EMAIL', 'NAUKRI_PASSWORD']);
+  clearStopRequest(profileId, runId);
+
+  const stopMonitor = createStopMonitor(profileId, runId);
+  const runtime = await createRuntime(profile);
   const summary = {
     runId,
+    profileId,
+    profileLabel: profile.label,
     trigger,
     status: 'running',
     startedAt: new Date().toISOString(),
@@ -60,14 +69,14 @@ async function main() {
       profilePage,
       stopMonitor
     });
-    persistRunSummary(summary);
+    persistRunSummary(profileId, summary);
 
     summary.modules.jobSearch = await runJobSearchAndApplyFlow({
       jobSearchPage,
       jobApplyPage,
       stopMonitor
     });
-    persistRunSummary(summary);
+    persistRunSummary(profileId, summary);
 
     summary.modules.nvites = await runNviteFlow({
       homePage,
@@ -75,7 +84,7 @@ async function main() {
       jobApplyPage,
       stopMonitor
     });
-    persistRunSummary(summary);
+    persistRunSummary(profileId, summary);
 
     summary.modules.recommendations = await runRecommendationFlow({
       homePage,
@@ -83,18 +92,18 @@ async function main() {
       jobApplyPage,
       stopMonitor
     });
-    persistRunSummary(summary);
+    persistRunSummary(profileId, summary);
 
     summary.modules.resumeUpdate = await runResumeUpdateFlow({
       homePage,
       profilePage,
       stopMonitor
     });
-    persistRunSummary(summary);
+    persistRunSummary(profileId, summary);
 
-    summary.status = 'completed';
+    summary.status = deriveOverallRunStatus(summary.modules);
     summary.finishedAt = new Date().toISOString();
-    persistRunSummary(summary);
+    persistRunSummary(profileId, summary);
   } catch (error) {
     summary.finishedAt = new Date().toISOString();
 
@@ -108,27 +117,29 @@ async function main() {
       logger.error(`Dashboard automation failed: ${error.stack || error.message}`);
     }
 
-    persistRunSummary(summary);
+    persistRunSummary(profileId, summary);
 
     if (!(error instanceof StopRequestedError)) {
       process.exitCode = 1;
     }
   } finally {
-    clearStopRequest(runId);
+    clearStopRequest(profileId, runId);
     await runtime?.browser?.close().catch(() => {});
   }
 }
 
-async function createRuntime() {
+async function createRuntime(profile) {
   const browserType = getBrowserType(getEnv('BROWSER', 'chromium'));
   const browser = await browserType.launch({
-    headless: getEnv('HEADLESS', 'false') === 'true',
-    slowMo: getNumberEnv('SLOW_MO', 0)
+    headless: getEnv('DASHBOARD_HEADLESS', 'true') === 'true',
+    slowMo: 0
   });
 
   const context = await browser.newContext({
     baseURL: getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com'),
-    storageState: hasCompatibleAuthState() ? getAuthStatePath() : undefined
+    storageState: hasCompatibleAuthState(profile.email, profile.password, profile.id)
+      ? getAuthStatePath(profile.id)
+      : undefined
   });
 
   await allowNaukriLocationAccess(
@@ -142,7 +153,11 @@ async function createRuntime() {
     browser,
     context,
     page,
-    loginPage: new LoginPage(page),
+    loginPage: new LoginPage(page, {
+      profileKey: profile.id,
+      email: profile.email,
+      password: profile.password
+    }),
     homePage: new HomePage(page),
     jobSearchPage: new JobSearchPage(page),
     jobApplyPage: new JobApplyPage(page),
@@ -164,8 +179,59 @@ function getBrowserType(browserName) {
   return chromium;
 }
 
-function persistRunSummary(summary) {
-  createRunSummary(summary.runId, summary);
+function persistRunSummary(profileId, summary) {
+  replaceLatestRun(profileId, summary.runId, summary);
+}
+
+function deriveOverallRunStatus(modules = {}) {
+  const moduleStatuses = Object.values(modules)
+    .map((moduleResult) => getModuleStatus(moduleResult))
+    .filter(Boolean);
+
+  if (moduleStatuses.length === 0) {
+    return 'completed-with-warnings';
+  }
+
+  const hasWarnings = moduleStatuses.some((status) =>
+    String(status).startsWith('skipped')
+    || String(status).includes('warning')
+    || String(status).includes('no-application')
+  );
+
+  const hasVerifiedChange = hasActualSiteChange(modules);
+
+  if (!hasVerifiedChange || hasWarnings) {
+    return 'completed-with-warnings';
+  }
+
+  return 'completed';
+}
+
+function getModuleStatus(moduleResult) {
+  if (!moduleResult) {
+    return null;
+  }
+
+  if (moduleResult.status) {
+    return moduleResult.status;
+  }
+
+  if (moduleResult.summary?.status) {
+    return moduleResult.summary.status;
+  }
+
+  return null;
+}
+
+function hasActualSiteChange(modules = {}) {
+  const profileUpdated = modules.profileRefresh?.profileUpdated === true
+    && modules.profileRefresh?.status === 'completed';
+  const jobApplied = Number(modules.jobSearch?.summary?.totalApplicationsSubmitted || 0) > 0;
+  const nviteApplied = Number(modules.nvites?.summary?.applied || 0) > 0;
+  const recommendationApplied = Number(modules.recommendations?.summary?.appliedSuccessfully || 0) > 0;
+  const resumeUploaded = modules.resumeUpdate?.uploaded === true;
+
+  return profileUpdated || jobApplied || nviteApplied || recommendationApplied || resumeUploaded;
 }
 
 main().catch((error) => {

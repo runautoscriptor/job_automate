@@ -9,16 +9,21 @@
   <body>
     <main class="app-shell">
       <section class="hero-card">
-        <p class="eyebrow">Local Control Center</p>
-        <h1>Naukri Automation Dashboard</h1>
-        <p class="hero-copy">
-          Run, stop, schedule, and review your existing Playwright workflow from one local dashboard.
-        </p>
+        <div class="hero-topline">
+          <div>
+            <p class="eyebrow">Local Control Center</p>
+            <h1>Naukri Automation Dashboard</h1>
+            <p class="hero-copy">
+              Run, stop, schedule, and review your existing Playwright workflow for each Naukri profile.
+            </p>
+          </div>
+          <div class="profile-picker" id="profileTabs"></div>
+        </div>
 
         <div class="control-grid">
           <button id="runButton" class="primary-action">Run</button>
           <button id="stopButton" class="secondary-action">Stop</button>
-          <button id="autoRunButton" class="secondary-action">Auto Run: Off</button>
+          <button id="autoRunButton" class="secondary-action">Auto Run</button>
           <button id="refreshButton" class="secondary-action">View Results</button>
         </div>
 
@@ -28,32 +33,35 @@
         </div>
       </section>
 
+      <section class="stats-grid" id="overviewGrid"></section>
+
       <section class="panel">
         <div class="panel-header">
-          <h2>Latest Results</h2>
-          <p id="latestRunMeta">No run data yet.</p>
+          <div>
+            <h2>Current Run</h2>
+            <p id="latestRunMeta">No run data yet.</p>
+          </div>
+          <div class="profile-meta" id="profileMeta"></div>
         </div>
-
-        <div class="module-grid" id="moduleGrid">
-          <article class="module-card">
-            <h3>Profile Refresh</h3>
-            <pre>Waiting for first run...</pre>
-          </article>
-        </div>
+        <div class="module-grid" id="moduleGrid"></div>
       </section>
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Recent Runs</h2>
-          <p>Newest runs appear first.</p>
+          <div>
+            <h2>Latest Execution</h2>
+            <p>Only the most recent result is kept for the selected profile.</p>
+          </div>
         </div>
-        <div id="recentRuns" class="recent-runs"></div>
+        <div class="run-summary-card" id="latestExecutionCard"></div>
       </section>
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Live Logs</h2>
-          <p>Current or selected run output.</p>
+          <div>
+            <h2>Live Logs</h2>
+            <p>Current output for the selected profile.</p>
+          </div>
         </div>
         <pre id="logsViewer" class="logs-viewer">Logs will appear here.</pre>
       </section>

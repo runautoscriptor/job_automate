@@ -13,11 +13,36 @@ async function runNviteFlow({
   const processedInvitations = new Set();
   const reviewResults = [];
 
-  await ensureNviteContext({ homePage, nvitePage });
+  try {
+    await ensureNviteContext({ homePage, nvitePage });
+  } catch (error) {
+    logger.warn(`Skipping NVite module because the NVite page was not usable: ${error.message}`);
+    return {
+      reviewResults,
+      summary: {
+        totalNvitesReviewed: 0,
+        applied: 0,
+        alreadyApplied: 0,
+        notInterested: 0,
+        skipped: 1,
+        questionsAnswered: 0,
+        questionsSkipped: 0,
+        unknownQuestionsLogged: 0,
+        applicationsFailed: 1,
+        status: 'skipped-page-unavailable',
+        error: error.message
+      }
+    };
+  }
 
   while (true) {
     await stopMonitor?.throwIfStopRequested?.();
-    await ensureNviteContext({ homePage, nvitePage });
+    try {
+      await ensureNviteContext({ homePage, nvitePage });
+    } catch (error) {
+      logger.warn(`Stopping NVite review because the NVite page became unusable: ${error.message}`);
+      break;
+    }
 
     const visibleInvitations = await nvitePage.getVisibleInvitationCards();
     const nextInvitation = visibleInvitations.find(
@@ -99,6 +124,9 @@ async function runNviteFlow({
   }
 
   return {
+    status: reviewResults.some((result) => result.status === 'applied')
+      ? 'completed'
+      : 'completed-no-application',
     reviewResults,
     summary: buildNviteSummary(reviewResults)
   };

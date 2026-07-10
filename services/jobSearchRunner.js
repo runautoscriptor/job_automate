@@ -33,45 +33,73 @@ async function runJobSearchAndApplyFlow({
     await stopMonitor?.throwIfStopRequested?.();
     logger.info(`Starting Phase 2 search flow for keyword "${keyword}"`);
 
-    await jobSearchPage.gotoKeywordResults(keyword, searchCriteria.experienceYears);
-    await jobSearchPage.applyLocationFilters(searchCriteria.locations);
-    await jobSearchPage.applyFreshnessLastOneDay();
+    try {
+      await jobSearchPage.gotoKeywordResults(keyword, searchCriteria.experienceYears);
+      await jobSearchPage.applyLocationFilters(searchCriteria.locations);
+      await jobSearchPage.applyFreshnessLastOneDay();
 
-    const matchingJobs = await jobSearchPage.getVisibleJobLinks({
-      keyword,
-      maxJobs: effectiveMaxJobsToScanPerKeyword,
-      minJobsToAttempt: minJobsToAttemptPerKeyword
-    });
-
-    searchResults.push({
-      keyword,
-      jobsConsidered: matchingJobs.length,
-      minimumAttemptsTarget: Math.min(minJobsToAttemptPerKeyword, matchingJobs.length),
-      freshness: searchCriteria.freshness
-    });
-
-    logger.info(
-      `Scanning up to ${matchingJobs.length} jobs for keyword "${keyword}" with a minimum target of ${minJobsToAttemptPerKeyword} attempts and at most ${maxApplicationsPerKeyword} successful application.`
-    );
-
-    const keywordOutcome = await applyToSingleJobForKeyword({
-      keyword,
-      matchingJobs,
-      maxApplicationsPerKeyword,
-      jobApplyPage,
-      stopMonitor
-    });
-
-    applicationResults.push(keywordOutcome.summary);
-    attemptedJobResults.push(
-      ...keywordOutcome.attemptedJobs.map((jobResult) => ({
+      const matchingJobs = await jobSearchPage.getVisibleJobLinks({
         keyword,
-        ...jobResult
-      }))
-    );
+        maxJobs: effectiveMaxJobsToScanPerKeyword,
+        minJobsToAttempt: minJobsToAttemptPerKeyword
+      });
+
+      searchResults.push({
+        keyword,
+        jobsConsidered: matchingJobs.length,
+        minimumAttemptsTarget: Math.min(minJobsToAttemptPerKeyword, matchingJobs.length),
+        freshness: searchCriteria.freshness
+      });
+
+      logger.info(
+        `Scanning up to ${matchingJobs.length} jobs for keyword "${keyword}" with a minimum target of ${minJobsToAttemptPerKeyword} attempts and at most ${maxApplicationsPerKeyword} successful application.`
+      );
+
+      const keywordOutcome = await applyToSingleJobForKeyword({
+        keyword,
+        matchingJobs,
+        maxApplicationsPerKeyword,
+        jobApplyPage,
+        stopMonitor
+      });
+
+      applicationResults.push(keywordOutcome.summary);
+      attemptedJobResults.push(
+        ...keywordOutcome.attemptedJobs.map((jobResult) => ({
+          keyword,
+          ...jobResult
+        }))
+      );
+    } catch (error) {
+      logger.warn(
+        `Skipping keyword "${keyword}" because the job search page was not usable: ${error.message}`
+      );
+
+      searchResults.push({
+        keyword,
+        jobsConsidered: 0,
+        minimumAttemptsTarget: 0,
+        freshness: searchCriteria.freshness,
+        status: 'search-page-unavailable',
+        error: error.message
+      });
+
+      applicationResults.push({
+        keyword,
+        status: 'search-page-unavailable',
+        applicationsSubmitted: 0,
+        jobsConsidered: 0,
+        jobsAttempted: 0,
+        error: error.message
+      });
+    }
   }
 
   return {
+    status: buildJobModuleStatus({
+      searchResults,
+      applicationResults
+    }),
     searchCriteria,
     searchResults,
     applicationResults,
@@ -82,6 +110,24 @@ async function runJobSearchAndApplyFlow({
       attemptedJobResults
     })
   };
+}
+
+function buildJobModuleStatus({
+  searchResults = [],
+  applicationResults = []
+}) {
+  const hasSearchPageIssue = searchResults.some((result) => result.status === 'search-page-unavailable');
+  const hasApplication = applicationResults.some((result) => result.status === 'applied');
+
+  if (hasSearchPageIssue && !hasApplication) {
+    return 'skipped-search-page-unavailable';
+  }
+
+  if (hasApplication) {
+    return 'completed';
+  }
+
+  return 'completed-no-application';
 }
 
 async function applyToSingleJobForKeyword({

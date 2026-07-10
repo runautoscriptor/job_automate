@@ -21,9 +21,37 @@ async function runRecommendationFlow({
     recommendationCriteria.maxMatchingJobsToProcess
   );
 
-  await homePage.navigateToRecommendedJobs();
-  await recommendationPage.waitForPageReady();
-  await recommendationPage.ensureProfileTabSelected();
+  try {
+    await homePage.navigateToRecommendedJobs();
+    await recommendationPage.waitForPageReady();
+    await recommendationPage.ensureProfileTabSelected();
+  } catch (error) {
+    logger.warn(
+      `Skipping Recommendation module because the Recommendations page was not usable: ${error.message}`
+    );
+
+    return {
+      recommendationCriteria: {
+        ...recommendationCriteria,
+        maxRecommendationsToCheck,
+        maxMatchingJobsToProcess
+      },
+      reviewResults: [],
+      summary: {
+        totalRecommendationsChecked: 0,
+        matchingJobsFound: 0,
+        appliedSuccessfully: 0,
+        alreadyApplied: 0,
+        skipped: 1,
+        questionsAnswered: 0,
+        questionsSkipped: 0,
+        unknownQuestionsLogged: 0,
+        applicationsFailed: 1,
+        status: 'skipped-page-unavailable',
+        error: error.message
+      }
+    };
+  }
 
   const recommendations = await recommendationPage.getTopRecommendationCards({
     limit: maxRecommendationsToCheck
@@ -66,9 +94,23 @@ async function runRecommendationFlow({
 
     logger.info(`Reviewing recommended job "${recommendation.title}"`);
 
-    await homePage.navigateToRecommendedJobs();
-    await recommendationPage.waitForPageReady();
-    await recommendationPage.ensureProfileTabSelected();
+    try {
+      await homePage.navigateToRecommendedJobs();
+      await recommendationPage.waitForPageReady();
+      await recommendationPage.ensureProfileTabSelected();
+    } catch (error) {
+      reviewResults.push(
+        createRecommendationResult(recommendation, 'skipped-page-unavailable', {
+          isMatch: true,
+          matchingKeywords: matchResult.matchingKeywords.join(', '),
+          questionsAnswered: 0,
+          questionsSkipped: 0,
+          unknownQuestionsLogged: 0,
+          error: error.message
+        })
+      );
+      continue;
+    }
 
     const wasSelected = await recommendationPage.selectRecommendation(
       recommendation.title,
@@ -111,6 +153,9 @@ async function runRecommendationFlow({
   }
 
   return {
+    status: reviewResults.some((result) => result.status === 'applied')
+      ? 'completed'
+      : 'completed-no-application',
     recommendationCriteria: {
       ...recommendationCriteria,
       maxRecommendationsToCheck,

@@ -3,19 +3,35 @@ const path = require('path');
 const crypto = require('crypto');
 const { getEnv } = require('./env');
 
-const AUTH_STATE_PATH = path.resolve(process.cwd(), 'auth', 'naukri-user.json');
-const AUTH_METADATA_PATH = path.resolve(process.cwd(), 'auth', 'naukri-user.meta.json');
-
-function getAuthStatePath() {
-  return AUTH_STATE_PATH;
+function normalizeProfileKey(profileKey = 'default') {
+  return String(profileKey || 'default')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-');
 }
 
-function getAuthMetadataPath() {
-  return AUTH_METADATA_PATH;
+function getAuthStatePath(profileKey = 'default') {
+  const normalizedProfileKey = normalizeProfileKey(profileKey);
+  const fileName =
+    normalizedProfileKey === 'default'
+      ? 'naukri-user.json'
+      : `naukri-user-${normalizedProfileKey}.json`;
+
+  return path.resolve(process.cwd(), 'auth', fileName);
 }
 
-function hasAuthState() {
-  return fs.existsSync(AUTH_STATE_PATH);
+function getAuthMetadataPath(profileKey = 'default') {
+  const normalizedProfileKey = normalizeProfileKey(profileKey);
+  const fileName =
+    normalizedProfileKey === 'default'
+      ? 'naukri-user.meta.json'
+      : `naukri-user-${normalizedProfileKey}.meta.json`;
+
+  return path.resolve(process.cwd(), 'auth', fileName);
+}
+
+function hasAuthState(profileKey = 'default') {
+  return fs.existsSync(getAuthStatePath(profileKey));
 }
 
 function normalizeEmail(email) {
@@ -36,13 +52,15 @@ function buildCredentialFingerprint(
     .digest('hex');
 }
 
-function readAuthMetadata() {
-  if (!fs.existsSync(AUTH_METADATA_PATH)) {
+function readAuthMetadata(profileKey = 'default') {
+  const metadataPath = getAuthMetadataPath(profileKey);
+
+  if (!fs.existsSync(metadataPath)) {
     return null;
   }
 
   try {
-    return JSON.parse(fs.readFileSync(AUTH_METADATA_PATH, 'utf8'));
+    return JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
   } catch (error) {
     return null;
   }
@@ -50,14 +68,15 @@ function readAuthMetadata() {
 
 function hasCompatibleAuthState(
   email = getEnv('NAUKRI_EMAIL'),
-  password = getEnv('NAUKRI_PASSWORD')
+  password = getEnv('NAUKRI_PASSWORD'),
+  profileKey = 'default'
 ) {
-  if (!hasAuthState()) {
+  if (!hasAuthState(profileKey)) {
     return false;
   }
 
   const expectedFingerprint = buildCredentialFingerprint(email, password);
-  const authMetadata = readAuthMetadata();
+  const authMetadata = readAuthMetadata(profileKey);
 
   if (!expectedFingerprint || !authMetadata?.credentialFingerprint) {
     return false;
@@ -68,7 +87,8 @@ function hasCompatibleAuthState(
 
 function saveAuthMetadata({
   email = getEnv('NAUKRI_EMAIL'),
-  password = getEnv('NAUKRI_PASSWORD')
+  password = getEnv('NAUKRI_PASSWORD'),
+  profileKey = 'default'
 } = {}) {
   const credentialFingerprint = buildCredentialFingerprint(email, password);
 
@@ -82,7 +102,7 @@ function saveAuthMetadata({
     updatedAt: new Date().toISOString()
   };
 
-  fs.writeFileSync(AUTH_METADATA_PATH, JSON.stringify(metadata, null, 2));
+  fs.writeFileSync(getAuthMetadataPath(profileKey), JSON.stringify(metadata, null, 2));
 
   return metadata;
 }

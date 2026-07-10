@@ -9,9 +9,14 @@ const {
 const { logger } = require('../../utils/logger');
 
 class LoginPage {
-  constructor(page) {
+  constructor(page, options = {}) {
     this.page = page;
     this.locators = loginLocators;
+    this.profileKey = options.profileKey || 'default';
+    this.credentials = {
+      email: options.email,
+      password: options.password
+    };
   }
 
   get emailInput() {
@@ -82,8 +87,8 @@ class LoginPage {
   }
 
   async loginWithCredentials(
-    email = getEnv('NAUKRI_EMAIL'),
-    password = getEnv('NAUKRI_PASSWORD')
+    email = this.credentials.email || getEnv('NAUKRI_EMAIL'),
+    password = this.credentials.password || getEnv('NAUKRI_PASSWORD')
   ) {
     if (!email || !password) {
       throw new Error('Naukri credentials are missing. Please configure NAUKRI_EMAIL and NAUKRI_PASSWORD.');
@@ -113,7 +118,10 @@ class LoginPage {
   }
 
   async ensureAuthenticatedSession() {
-    if (!hasCompatibleAuthState()) {
+    const email = this.credentials.email || getEnv('NAUKRI_EMAIL');
+    const password = this.credentials.password || getEnv('NAUKRI_PASSWORD');
+
+    if (!hasCompatibleAuthState(email, password, this.profileKey)) {
       logger.info(
         'Stored auth state does not match the current .env credentials. A fresh login will be performed.'
       );
@@ -124,7 +132,7 @@ class LoginPage {
     }
 
     await this.openLoginModal();
-    await this.loginWithCredentials();
+    await this.loginWithCredentials(email, password);
   }
 
   async isAuthenticated() {
@@ -136,11 +144,11 @@ class LoginPage {
   }
 
   async saveAuthenticatedSession(
-    email = getEnv('NAUKRI_EMAIL'),
-    password = getEnv('NAUKRI_PASSWORD')
+    email = this.credentials.email || getEnv('NAUKRI_EMAIL'),
+    password = this.credentials.password || getEnv('NAUKRI_PASSWORD')
   ) {
-    await this.page.context().storageState({ path: getAuthStatePath() });
-    saveAuthMetadata({ email, password });
+    await this.page.context().storageState({ path: getAuthStatePath(this.profileKey) });
+    saveAuthMetadata({ email, password, profileKey: this.profileKey });
   }
 
   async hasSignedInIndicators() {

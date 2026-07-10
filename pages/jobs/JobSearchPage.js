@@ -37,6 +37,11 @@ class JobSearchPage {
   }
 
   async applyLocationFilters(locations) {
+    if (await this.hasNoResultsState()) {
+      logger.info('Skipping location filters because the search results page shows no results.');
+      return;
+    }
+
     if (!Array.isArray(locations) || locations.length === 0) {
       return;
     }
@@ -61,6 +66,11 @@ class JobSearchPage {
   }
 
   async applyFreshnessLastOneDay() {
+    if (await this.hasNoResultsState()) {
+      logger.info('Skipping freshness filter because the search results page shows no results.');
+      return;
+    }
+
     try {
       const freshnessDropdown = this.page.getByRole(this.locators.freshnessDropdown.role, {
         name: this.locators.freshnessDropdown.name
@@ -89,6 +99,11 @@ class JobSearchPage {
   }
 
   async getVisibleJobLinks({ keyword, maxJobs, minJobsToAttempt = 0 }) {
+    if (await this.hasNoResultsState()) {
+      logger.info(`No results were found for keyword "${keyword}". Moving to the next workflow step.`);
+      return [];
+    }
+
     const jobs = await this.page.evaluate((selector) => {
       const uniqueJobs = new Map();
 
@@ -138,6 +153,10 @@ class JobSearchPage {
   async expandLocationFilter(targetLocation) {
     await this.waitForResultsToRender();
 
+    if (await this.hasNoResultsState()) {
+      return;
+    }
+
     const expandedLocationLabel = this.page.locator(
       this.locators.expandedLocationLabel(targetLocation)
     );
@@ -171,10 +190,30 @@ class JobSearchPage {
 
   async waitForResultsToRender() {
     await this.page.waitForLoadState('domcontentloaded');
-    await this.page.locator(this.locators.jobLinksSelector).first().waitFor({
-      state: 'visible',
-      timeout: 60000
-    });
+    const hasVisibleJobResults = await this.page.locator(this.locators.jobLinksSelector).first()
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasVisibleJobResults) {
+      return;
+    }
+
+    const hasNoResults = await this.hasNoResultsState();
+
+    if (hasNoResults) {
+      logger.info('Detected "No results found" state on the job search page.');
+      return;
+    }
+
+    throw new Error('Job search results did not render and the page did not show a no-results state.');
+  }
+
+  async hasNoResultsState() {
+    return this.page
+      .getByText(this.locators.noResultsHeadingText, { exact: true })
+      .isVisible()
+      .catch(() => false);
   }
 }
 

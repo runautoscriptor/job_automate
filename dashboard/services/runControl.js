@@ -9,10 +9,11 @@ class StopRequestedError extends Error {
   }
 }
 
-function requestStop(runId) {
-  const stopRequestPath = getRunStopRequestPath(runId);
+function requestStop(profileId, runId) {
+  const stopRequestPath = getRunStopRequestPath(profileId, runId);
   ensureDirectory(require('path').dirname(stopRequestPath));
   writeJson(stopRequestPath, {
+    profileId,
     runId,
     requestedAt: new Date().toISOString()
   });
@@ -20,26 +21,27 @@ function requestStop(runId) {
   return stopRequestPath;
 }
 
-function clearStopRequest(runId) {
-  const stopRequestPath = getRunStopRequestPath(runId);
+function clearStopRequest(profileId, runId) {
+  const stopRequestPath = getRunStopRequestPath(profileId, runId);
 
   if (fs.existsSync(stopRequestPath)) {
     fs.unlinkSync(stopRequestPath);
   }
 }
 
-function hasStopRequest(runId) {
-  return fs.existsSync(getRunStopRequestPath(runId));
+function hasStopRequest(profileId, runId) {
+  return fs.existsSync(getRunStopRequestPath(profileId, runId));
 }
 
-function createStopMonitor(runId) {
+function createStopMonitor(profileId, runId) {
   return {
+    profileId,
     runId,
     isStopRequested() {
-      return hasStopRequest(runId);
+      return hasStopRequest(profileId, runId);
     },
     async throwIfStopRequested() {
-      if (hasStopRequest(runId)) {
+      if (hasStopRequest(profileId, runId)) {
         throw new StopRequestedError();
       }
     }

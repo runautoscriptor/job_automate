@@ -5,142 +5,305 @@ const refreshButton = document.getElementById('refreshButton');
 const runStatusPill = document.getElementById('runStatusPill');
 const currentRunLabel = document.getElementById('currentRunLabel');
 const latestRunMeta = document.getElementById('latestRunMeta');
+const profileTabs = document.getElementById('profileTabs');
+const profileMeta = document.getElementById('profileMeta');
+const overviewGrid = document.getElementById('overviewGrid');
 const moduleGrid = document.getElementById('moduleGrid');
-const recentRuns = document.getElementById('recentRuns');
+const latestExecutionCard = document.getElementById('latestExecutionCard');
 const logsViewer = document.getElementById('logsViewer');
 
-let selectedRunId = null;
+let selectedProfileId = null;
+let isRequestInFlight = false;
 
 runButton.addEventListener('click', async () => {
-  await postJson('/api/run');
-  await refreshDashboard();
+  await runAction(() => postJson('/api/run', { profileId: selectedProfileId }));
 });
 
 stopButton.addEventListener('click', async () => {
-  await postJson('/api/stop');
-  await refreshDashboard();
+  await runAction(() => postJson('/api/stop', { profileId: selectedProfileId }));
 });
 
 autoRunButton.addEventListener('click', async () => {
-  const status = await getJson('/api/status');
-  await postJson('/api/auto-run', {
-    enabled: !status.state.autoRunEnabled
-  });
-  await refreshDashboard();
+  const status = await getStatus();
+  await runAction(() =>
+    postJson('/api/auto-run', {
+      profileId: selectedProfileId,
+      enabled: !status.state.autoRunEnabled
+    })
+  );
 });
 
 refreshButton.addEventListener('click', refreshDashboard);
 
 async function refreshDashboard() {
-  const status = await getJson('/api/status');
+  const status = await getStatus();
   renderStatus(status);
+  await loadLogs();
+}
 
-  const activeRunId = status.state.currentRunId;
-  const runIdToLoad = selectedRunId || activeRunId || status.latestRun?.runId;
+async function getStatus() {
+  const query = selectedProfileId ? `?profileId=${encodeURIComponent(selectedProfileId)}` : '';
+  const status = await getJson(`/api/status${query}`);
 
-  if (runIdToLoad) {
-    await loadRunLogs(runIdToLoad);
-  } else {
-    logsViewer.textContent = 'Logs will appear here.';
+  if (!selectedProfileId) {
+    selectedProfileId = status.selectedProfileId;
   }
+
+  return status;
 }
 
 function renderStatus(status) {
-  const { state, currentRun, latestRun, recentRuns: runs } = status;
-  const activeSummary = currentRun || latestRun;
+  const currentRunSummary = status.currentRun || null;
+  const latestSummary = status.latestRun || null;
+  const activeSummary = latestSummary;
+  const activeState = status.state || {};
+  const selectedProfile = status.profile;
+  const headerStatus = currentRunSummary?.status || 'idle';
 
-  runStatusPill.textContent = formatStatus(activeSummary?.status || 'idle');
-  runStatusPill.className = `status-pill ${String(activeSummary?.status || 'idle').toLowerCase()}`;
-  currentRunLabel.textContent = state.currentRunId
-    ? `Running: ${state.currentRunId}`
+  renderProfileTabs(status.profiles || [], status.selectedProfileId);
+
+  runStatusPill.textContent = formatStatus(headerStatus);
+  runStatusPill.className = `status-pill ${normalizeStatusClass(headerStatus)}`;
+  currentRunLabel.textContent = activeState.currentRunId
+    ? `Running ${activeState.currentRunId}`
     : 'No run in progress';
 
-  autoRunButton.textContent = `Auto Run: ${state.autoRunEnabled ? 'On' : 'Off'}`;
-  runButton.disabled = Boolean(state.currentRunId);
-  stopButton.disabled = !state.currentRunId;
+  runButton.disabled = isRequestInFlight || Boolean(activeState.currentRunId) || !selectedProfile?.configured;
+  stopButton.disabled = isRequestInFlight || !activeState.currentRunId;
+  refreshButton.disabled = isRequestInFlight;
+  autoRunButton.disabled = isRequestInFlight || !selectedProfile?.configured;
+
+  autoRunButton.textContent = selectedProfile?.configured
+    ? `Auto Run 9:00 AM IST: ${activeState.autoRunEnabled ? 'On' : 'Off'}`
+    : 'Auto Run Unavailable';
 
   latestRunMeta.textContent = activeSummary
-    ? `${activeSummary.runId} • ${formatStatus(activeSummary.status)} • ${formatDate(activeSummary.finishedAt || activeSummary.startedAt)}`
+    ? `${activeSummary.runId} - ${formatStatus(activeSummary.status)} - ${formatDate(activeSummary.finishedAt || activeSummary.startedAt)}`
     : 'No run data yet.';
 
+  renderProfileMeta(selectedProfile, activeState, status);
+  renderOverview(activeSummary);
   renderModules(activeSummary?.modules || {});
-  renderRecentRuns(runs || []);
+  renderLatestExecution(activeSummary);
 }
 
-function renderModules(modules) {
-  const moduleEntries = [
-    ['Profile Refresh', modules.profileRefresh],
-    ['Job Search & Application', modules.jobSearch?.summary || modules.jobSearch],
-    ['Nvite Summary', modules.nvites?.summary || modules.nvites],
-    ['Recommendation Summary', modules.recommendations?.summary || modules.recommendations],
-    ['Resume Update', modules.resumeUpdate]
-  ];
-
-  moduleGrid.innerHTML = moduleEntries
-    .map(([title, data]) => {
-      const body = data ? JSON.stringify(data, null, 2) : 'Waiting for data...';
-      return `
-        <article class="module-card">
-          <h3>${escapeHtml(title)}</h3>
-          <pre>${escapeHtml(body)}</pre>
-        </article>
-      `;
-    })
-    .join('');
-}
-
-function renderRecentRuns(runs) {
-  recentRuns.innerHTML = runs
-    .map((run) => {
-      const summary = {
-        status: run.status,
-        startedAt: run.startedAt,
-        finishedAt: run.finishedAt,
-        error: run.error
-      };
-
-      return `
-        <article class="run-card">
-          <h3>${escapeHtml(run.runId)}</h3>
-          <pre>${escapeHtml(JSON.stringify(summary, null, 2))}</pre>
-          <button data-run-id="${escapeHtml(run.runId)}" class="secondary-action">View This Run</button>
-        </article>
-      `;
-    })
+function renderProfileTabs(profiles, activeProfileId) {
+  profileTabs.innerHTML = profiles
+    .map((profile) => `
+      <button
+        class="profile-tab ${profile.id === activeProfileId ? 'active' : ''}"
+        data-profile-id="${escapeHtml(profile.id)}"
+      >
+        <span class="profile-chip">
+          <strong>${escapeHtml(profile.label)}</strong>
+          <small>${profile.configured ? 'Configured' : 'Credentials missing'}</small>
+        </span>
+      </button>
+    `)
     .join('');
 
-  for (const button of recentRuns.querySelectorAll('button[data-run-id]')) {
+  for (const button of profileTabs.querySelectorAll('[data-profile-id]')) {
     button.addEventListener('click', async () => {
-      selectedRunId = button.dataset.runId;
-      await loadRunLogs(selectedRunId);
+      const nextProfileId = button.dataset.profileId;
+      if (!nextProfileId || nextProfileId === selectedProfileId || isRequestInFlight) {
+        return;
+      }
+
+      selectedProfileId = nextProfileId;
+      await postJson('/api/profile/select', { profileId: nextProfileId });
+      await refreshDashboard();
     });
   }
 }
 
-async function loadRunLogs(runId) {
-  const response = await fetch(`/api/runs/${encodeURIComponent(runId)}/logs`);
+function renderProfileMeta(profile, state, status) {
+  if (!profile) {
+    profileMeta.innerHTML = '';
+    return;
+  }
+
+  const nextAutoRun = status.profiles.find((item) => item.id === profile.id)?.nextAutoRunAt;
+  profileMeta.innerHTML = [
+    buildMetaCard('Profile', profile.label),
+    buildMetaCard('Credentials', profile.configured ? 'Ready' : 'Missing'),
+    buildMetaCard('Current Status', formatStatus(status.currentRun?.status || 'idle')),
+    buildMetaCard('Next Auto Run', state.autoRunEnabled && nextAutoRun ? formatDateIst(nextAutoRun) : 'Disabled')
+  ].join('');
+}
+
+function renderOverview(summary) {
+  const overviewItems = [
+    {
+      label: 'Overall Result',
+      value: formatStatus(summary?.status || 'idle')
+    },
+    {
+      label: 'Execution Time',
+      value: getExecutionDuration(summary)
+    },
+    {
+      label: 'Applications',
+      value: summary?.modules?.jobSearch?.summary?.totalApplicationsSubmitted ?? 0
+    },
+    {
+      label: 'Resume Update',
+      value: summary?.modules?.resumeUpdate?.uploaded
+        ? 'Updated'
+        : formatStatus(summary?.modules?.resumeUpdate?.status || 'not-updated')
+    }
+  ];
+
+  overviewGrid.innerHTML = overviewItems
+    .map((item) => `
+      <article class="stat-card">
+        <span class="stat-label">${escapeHtml(item.label)}</span>
+        <strong class="stat-value">${escapeHtml(String(item.value))}</strong>
+      </article>
+    `)
+    .join('');
+}
+
+function renderModules(modules) {
+  const moduleCards = [
+    buildModuleCard('Profile Status', modules.profileRefresh, [
+      ['Status', formatStatus(modules.profileRefresh?.status || 'idle')],
+      ['Updated', booleanLabel(modules.profileRefresh?.profileUpdated)]
+    ]),
+    buildModuleCard('Job Search', modules.jobSearch, [
+      ['Keywords', modules.jobSearch?.summary?.totalKeywordsProcessed ?? 0],
+      ['Jobs Reviewed', modules.jobSearch?.summary?.totalJobsReviewed ?? 0],
+      ['Applications', modules.jobSearch?.summary?.totalApplicationsSubmitted ?? 0],
+      ['Skipped', modules.jobSearch?.summary?.skippedCount ?? 0]
+    ]),
+    buildModuleCard('Nvite', modules.nvites, [
+      ['Reviewed', modules.nvites?.summary?.totalNvitesReviewed ?? 0],
+      ['Applied', modules.nvites?.summary?.applied ?? 0],
+      ['Already Applied', modules.nvites?.summary?.alreadyApplied ?? 0],
+      ['Skipped', modules.nvites?.summary?.skipped ?? 0]
+    ]),
+    buildModuleCard('Recommendations', modules.recommendations, [
+      ['Checked', modules.recommendations?.summary?.totalRecommendationsChecked ?? 0],
+      ['Matching Jobs', modules.recommendations?.summary?.matchingJobsFound ?? 0],
+      ['Applied', modules.recommendations?.summary?.appliedSuccessfully ?? 0],
+      ['Skipped', modules.recommendations?.summary?.skipped ?? 0]
+    ]),
+    buildModuleCard('Resume Update', modules.resumeUpdate, [
+      ['Status', formatStatus(modules.resumeUpdate?.status || 'idle')],
+      ['File', modules.resumeUpdate?.uploadedFileName || 'Pending'],
+      ['Uploaded On', modules.resumeUpdate?.uploadedOn || 'Pending']
+    ])
+  ];
+
+  moduleGrid.innerHTML = moduleCards.join('');
+}
+
+function renderLatestExecution(summary) {
+  if (!summary) {
+    latestExecutionCard.innerHTML = '<div class="empty-state">No execution has been recorded yet.</div>';
+    return;
+  }
+
+  latestExecutionCard.innerHTML = `
+    <div class="run-summary-grid">
+      ${buildSummaryMetric('Run ID', summary.runId)}
+      ${buildSummaryMetric('Status', formatStatus(summary.status))}
+      ${buildSummaryMetric('Started', formatDate(summary.startedAt))}
+      ${buildSummaryMetric('Finished', formatDate(summary.finishedAt))}
+    </div>
+    <div class="module-hint">${escapeHtml(summary.error || 'Latest execution completed without dashboard-level errors.')}</div>
+  `;
+}
+
+async function loadLogs() {
+  const query = selectedProfileId ? `?profileId=${encodeURIComponent(selectedProfileId)}` : '';
+  const response = await fetch(`/api/logs${query}`);
   const logs = await response.text();
-  logsViewer.textContent = logs || 'No logs available for this run yet.';
+  logsViewer.textContent = logs || 'Logs will appear here.';
+}
+
+async function runAction(action) {
+  if (isRequestInFlight) {
+    return;
+  }
+
+  try {
+    isRequestInFlight = true;
+    updateButtonsWhileBusy();
+    await action();
+  } catch (error) {
+    logsViewer.textContent = `Dashboard request failed: ${error.message}`;
+  } finally {
+    isRequestInFlight = false;
+    await refreshDashboard();
+  }
+}
+
+function updateButtonsWhileBusy() {
+  runButton.disabled = true;
+  stopButton.disabled = true;
+  autoRunButton.disabled = true;
+  refreshButton.disabled = true;
+}
+
+function buildMetaCard(label, value) {
+  return `
+    <div class="meta-item">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value || 'n/a'))}</strong>
+    </div>
+  `;
+}
+
+function buildModuleCard(title, data, rows) {
+  const moduleStatus = getModuleStatus(data);
+  const statusClass = normalizeStatusClass(moduleStatus);
+  const body = data
+    ? rows.map(([label, value]) => `
+        <div class="metric-row">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(String(value ?? 'n/a'))}</strong>
+        </div>
+      `).join('')
+    : '<div class="empty-state">Waiting for data...</div>';
+
+  return `
+    <article class="module-card">
+      <header>
+        <h3>${escapeHtml(title)}</h3>
+        <span class="badge ${statusClass}">${escapeHtml(formatStatus(moduleStatus))}</span>
+      </header>
+      <div class="module-body">${body}</div>
+    </article>
+  `;
+}
+
+function buildSummaryMetric(label, value) {
+  return `
+    <div class="meta-item">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value || 'n/a'))}</strong>
+    </div>
+  `;
 }
 
 async function getJson(url) {
   const response = await fetch(url);
-
   if (!response.ok) {
-    throw new Error(`Request failed for ${url}`);
+    throw await buildHttpError(response, url);
   }
-
   return response.json();
 }
 
 async function postJson(url, payload = {}) {
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
+
+  if (!response.ok) {
+    throw await buildHttpError(response, url);
+  }
 
   return response.json().catch(() => ({}));
 }
@@ -151,12 +314,58 @@ function formatStatus(status) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function formatDate(value) {
-  if (!value) {
-    return 'n/a';
+function normalizeStatusClass(status) {
+  return String(status || 'idle').toLowerCase().replace(/\s+/g, '-');
+}
+
+function getModuleStatus(moduleData) {
+  if (!moduleData) {
+    return 'idle';
   }
 
+  if (moduleData.status) {
+    return moduleData.status;
+  }
+
+  if (moduleData.summary?.status) {
+    return moduleData.summary.status;
+  }
+
+  return 'completed';
+}
+
+function booleanLabel(value) {
+  return value ? 'Yes' : 'No';
+}
+
+function getExecutionDuration(summary) {
+  if (!summary?.startedAt || !summary?.finishedAt) {
+    return summary?.status === 'running' ? 'Running' : 'n/a';
+  }
+
+  const durationMs = new Date(summary.finishedAt).getTime() - new Date(summary.startedAt).getTime();
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+}
+
+function formatDate(value) {
+  if (!value) return 'n/a';
   return new Date(value).toLocaleString();
+}
+
+function formatDateIst(value) {
+  if (!value) return 'n/a';
+  return new Date(value).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
 }
 
 function escapeHtml(value) {
@@ -166,10 +375,23 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;');
 }
 
+async function buildHttpError(response, url) {
+  const fallbackMessage = `Request failed for ${url}`;
+
+  try {
+    const payload = await response.json();
+    return new Error(payload.error || payload.reason || fallbackMessage);
+  } catch (error) {
+    return new Error(fallbackMessage);
+  }
+}
+
 refreshDashboard().catch((error) => {
   logsViewer.textContent = error.message;
 });
 
 setInterval(() => {
-  refreshDashboard().catch(() => {});
-}, 10000);
+  if (!isRequestInFlight) {
+    refreshDashboard().catch(() => {});
+  }
+}, 5000);

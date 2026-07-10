@@ -45,7 +45,7 @@ class ProfilePage {
   }
 
   get resumeFileInput() {
-    return this.page.locator(this.locators.resumeFileInput);
+    return this.page.locator(this.locators.resumeFileInputCandidates[0]);
   }
 
   get updateResumeButton() {
@@ -60,9 +60,89 @@ class ProfilePage {
     return this.page.getByText(this.locators.uploadedResumeDatePattern).first();
   }
 
+  async waitForProfilePageReady() {
+    await expect(this.page).toHaveURL(/\/mnjuser\/profile/, { timeout: 45000 });
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForTimeout(1500);
+
+    const hasKnownProfileSignal = await expect
+      .poll(
+        async () => this.hasAnyProfileSignal(),
+        {
+          timeout: 20000,
+          message: 'Profile page did not finish rendering expected profile content.'
+        }
+      )
+      .toBeTruthy()
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasKnownProfileSignal) {
+      return;
+    }
+
+    const bodyText = await this.page.locator('body').textContent().catch(() => '');
+    const normalizedBodyText = String(bodyText || '').replace(/\s+/g, ' ').trim();
+    const broadProfileSignals = [
+      /profile last updated/i,
+      /\bresume\b/i,
+      /quick links/i,
+      /key skills/i,
+      /employment/i,
+      /education/i
+    ];
+
+    if (broadProfileSignals.some((pattern) => pattern.test(normalizedBodyText))) {
+      return;
+    }
+
+    throw new Error('Profile page did not finish rendering expected profile content.');
+  }
+
+  async hasAnyProfileSignal() {
+    const checks = [
+      this.lastUpdatedLabel.isVisible().catch(() => false),
+      this.resumeHeading.isVisible().catch(() => false),
+      this.quickLinksResumeUpdateLink.isVisible().catch(() => false),
+      this.page.getByText(/profile last updated/i).isVisible().catch(() => false),
+      this.page.getByText(/quick links/i).isVisible().catch(() => false),
+      this.page.getByText(/key skills/i).isVisible().catch(() => false),
+      this.page.getByText(/employment/i).isVisible().catch(() => false)
+    ];
+
+    const results = await Promise.all(checks);
+    return results.some(Boolean);
+  }
+
+  async isProfileUpdatedToday() {
+    const lastUpdatedText = await this.lastUpdatedLabel.textContent().catch(() => '');
+    return /today/i.test(String(lastUpdatedText || '').trim());
+  }
+
+  async findVisibleEditProfileButton() {
+    for (const candidate of this.locators.editProfileButtonCandidates) {
+      const locator = this.page.locator(candidate).first();
+      const isVisible = await locator.isVisible().catch(() => false);
+
+      if (isVisible) {
+        return locator;
+      }
+    }
+
+    return null;
+  }
+
   async clickEditProfile() {
-    await expect(this.editProfileButton).toBeVisible();
-    await this.editProfileButton.click();
+    await this.waitForProfilePageReady();
+
+    const editButton = await this.findVisibleEditProfileButton();
+
+    if (!editButton) {
+      throw new Error('Could not find the main profile edit button on the Naukri profile page.');
+    }
+
+    await editButton.scrollIntoViewIfNeeded().catch(() => {});
+    await editButton.click({ force: true });
     await expect(this.basicDetailsHeading).toBeVisible();
   }
 
@@ -84,28 +164,25 @@ class ProfilePage {
     const uploadedFileName = path.basename(localFilePath);
     const previousResumeInfo = await this.getCurrentResumeInfo();
 
+    await this.waitForProfilePageReady().catch(() => {});
     await this.resumeHeading.scrollIntoViewIfNeeded().catch(() => {});
     await this.quickLinksResumeUpdateLink.click().catch(() => {});
+    await this.page.getByRole('button', { name: /Update resume/i }).first().click().catch(() => {});
+    await this.page.waitForTimeout(1000);
 
-    const resumeFileInputCount = await this.resumeFileInput.count();
+    const resumeFileInput = await this.findResumeFileInput();
 
-    if (resumeFileInputCount !== 1) {
-      throw new Error(
-        `Expected exactly one resume file input, but found ${resumeFileInputCount}.`
-      );
+    if (!resumeFileInput) {
+      throw new Error('Could not find any usable resume file input on the profile page.');
     }
 
-    await this.resumeFileInput.setInputFiles(localFilePath);
+    await resumeFileInput.setInputFiles(localFilePath);
 
     const updateResumeButtonCount = await this.updateResumeButton.count();
 
-    if (updateResumeButtonCount !== 1) {
-      throw new Error(
-        `Expected exactly one resume Update resume button, but found ${updateResumeButtonCount}.`
-      );
+    if (updateResumeButtonCount === 1) {
+      await this.updateResumeButton.click({ force: true }).catch(() => {});
     }
-
-    await this.updateResumeButton.click({ force: true });
 
     await expect
       .poll(
@@ -136,6 +213,19 @@ class ProfilePage {
       .toBeTruthy();
 
     return this.getCurrentResumeInfo();
+  }
+
+  async findResumeFileInput() {
+    for (const candidate of this.locators.resumeFileInputCandidates) {
+      const locator = this.page.locator(candidate).first();
+      const count = await this.page.locator(candidate).count().catch(() => 0);
+
+      if (count > 0) {
+        return locator;
+      }
+    }
+
+    return null;
   }
 
   async getCurrentResumeInfo() {

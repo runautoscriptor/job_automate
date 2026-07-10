@@ -73,20 +73,19 @@ class HomePage {
   }
 
   async navigateToNvites() {
-    await this.navigateFromJobsMenu(this.nvitesLink, /\/mnjuser\/inbox/);
+    await this.navigateFromJobsMenu(this.nvitesLink, /\/mnjuser\/inbox/, this.nvitesUrl);
   }
 
   async navigateToRecommendedJobs() {
     await this.navigateFromJobsMenu(this.recommendedJobsLink, /recommend/i);
   }
 
-  async navigateFromJobsMenu(targetLink, expectedUrlPattern) {
+  async navigateFromJobsMenu(targetLink, expectedUrlPattern, fallbackUrl = null) {
     await this.page.goto(this.signedInHomeUrl, { waitUntil: 'domcontentloaded' });
     await this.page.waitForTimeout(1500);
     await this.jobsMenuLink.hover().catch(() => {});
-    await expect(targetLink).toBeVisible({ timeout: 15000 });
-
-    const targetHref = await targetLink.getAttribute('href');
+    const isTargetVisible = await targetLink.isVisible().catch(() => false);
+    const targetHref = await targetLink.getAttribute('href').catch(() => null);
 
     if (targetHref) {
       const destinationUrl = new URL(
@@ -94,9 +93,13 @@ class HomePage {
         getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com')
       ).toString();
       await this.page.goto(destinationUrl, { waitUntil: 'domcontentloaded' });
-    } else {
+    } else if (isTargetVisible) {
       await targetLink.click();
       await this.page.waitForLoadState('domcontentloaded');
+    } else if (fallbackUrl) {
+      await this.page.goto(fallbackUrl, { waitUntil: 'domcontentloaded' });
+    } else {
+      throw new Error('Unable to resolve the destination from the Jobs menu.');
     }
 
     if (expectedUrlPattern) {

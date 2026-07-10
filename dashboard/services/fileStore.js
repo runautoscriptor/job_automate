@@ -39,9 +39,18 @@ function readText(filePath, fallbackValue = '') {
   }
 }
 
+function removePath(targetPath) {
+  if (!fs.existsSync(targetPath)) {
+    return;
+  }
+
+  fs.rmSync(targetPath, { recursive: true, force: true });
+}
+
 module.exports = {
   appendText,
   ensureDirectory,
+  removePath,
   readJson,
   readText,
   writeJson
