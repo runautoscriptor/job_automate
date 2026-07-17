@@ -1,4 +1,5 @@
 const { chromium, firefox, webkit } = require('playwright');
+const { devices } = require('@playwright/test');
 const { LoginPage } = require('../pages/auth/LoginPage');
 const { HomePage } = require('../pages/common/HomePage');
 const { JobApplyPage } = require('../pages/jobs/JobApplyPage');
@@ -130,12 +131,16 @@ async function main() {
 
 async function createRuntime(profile) {
   const browserType = getBrowserType(getEnv('BROWSER', 'chromium'));
+  const headless = getEnv('DASHBOARD_HEADLESS', getEnv('HEADLESS', 'false')) === 'true';
+  const slowMo = getNumberEnv('SLOW_MO', 0);
   const browser = await browserType.launch({
-    headless: getEnv('DASHBOARD_HEADLESS', 'true') === 'true',
-    slowMo: 0
+    headless,
+    slowMo
   });
 
+  const desktopChrome = devices['Desktop Chrome'];
   const context = await browser.newContext({
+    ...desktopChrome,
     baseURL: getEnv('NAUKRI_BASE_URL', 'https://www.naukri.com'),
     storageState: hasCompatibleAuthState(profile.email, profile.password, profile.id)
       ? getAuthStatePath(profile.id)
@@ -148,6 +153,12 @@ async function createRuntime(profile) {
   );
 
   const page = await context.newPage();
+  page.setDefaultTimeout(getNumberEnv('ACTION_TIMEOUT', 15000));
+  page.setDefaultNavigationTimeout(getNumberEnv('NAVIGATION_TIMEOUT', 45000));
+
+  logger.info(
+    `Dashboard runtime started for profile "${profile.id}" using email "${profile.email}" with headless=${headless}.`
+  );
 
   return {
     browser,

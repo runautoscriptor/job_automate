@@ -125,6 +125,7 @@ function renderProfileMeta(profile, state, status) {
   const nextAutoRun = status.profiles.find((item) => item.id === profile.id)?.nextAutoRunAt;
   profileMeta.innerHTML = [
     buildMetaCard('Profile', profile.label),
+    buildMetaCard('Logged In Email', profile.email || 'n/a'),
     buildMetaCard('Credentials', profile.configured ? 'Ready' : 'Missing'),
     buildMetaCard('Current Status', formatStatus(status.currentRun?.status || 'idle')),
     buildMetaCard('Next Auto Run', state.autoRunEnabled && nextAutoRun ? formatDateIst(nextAutoRun) : 'Disabled')

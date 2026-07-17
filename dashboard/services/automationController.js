@@ -14,6 +14,7 @@ const { appendText, ensureDirectory, removePath } = require('./fileStore');
 const { getProfileDirectory, getProfileLogPath, getRunDirectory, getRunLogPath } = require('./paths');
 const { getDashboardProfiles, getProfileById } = require('./profileRegistry');
 const { requestStop } = require('./runControl');
+const { getEnv } = require('../../utils/env');
 
 const activeChildProcesses = new Map();
 
@@ -65,7 +66,7 @@ function startAutomationRun(options = {}) {
         DASHBOARD_PROFILE_ID: profileId,
         NAUKRI_EMAIL: profile.email,
         NAUKRI_PASSWORD: profile.password,
-        DASHBOARD_HEADLESS: 'true'
+        DASHBOARD_HEADLESS: getEnv('HEADLESS', 'false')
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false
@@ -99,7 +100,7 @@ function startAutomationRun(options = {}) {
       currentRunId: null,
       currentRunPid: null,
       lastRunId: runId,
-      lastCompletedRunId: finalSummary?.status === 'completed' ? runId : state.lastCompletedRunId,
+      lastCompletedRunId: isCompletedRunStatus(finalSummary?.status) ? runId : state.lastCompletedRunId,
       lastAutoRunAt: options.trigger === 'auto' ? new Date().toISOString() : state.lastAutoRunAt
     }));
   });
@@ -240,6 +241,10 @@ function createInitialRunSummary(runId, trigger, profileId) {
     modules: {},
     error: null
   };
+}
+
+function isCompletedRunStatus(status) {
+  return typeof status === 'string' && status.startsWith('completed');
 }
 
 module.exports = {

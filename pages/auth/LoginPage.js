@@ -63,6 +63,14 @@ class LoginPage {
     ).toString();
   }
 
+  getEffectiveEmail() {
+    return this.credentials.email || getEnv('NAUKRI_EMAIL');
+  }
+
+  getEffectivePassword() {
+    return this.credentials.password || getEnv('NAUKRI_PASSWORD');
+  }
+
   async goto() {
     await this.page.goto(this.loginUrl, { waitUntil: 'domcontentloaded' });
 
@@ -87,12 +95,14 @@ class LoginPage {
   }
 
   async loginWithCredentials(
-    email = this.credentials.email || getEnv('NAUKRI_EMAIL'),
-    password = this.credentials.password || getEnv('NAUKRI_PASSWORD')
+    email = this.getEffectiveEmail(),
+    password = this.getEffectivePassword()
   ) {
     if (!email || !password) {
       throw new Error('Naukri credentials are missing. Please configure NAUKRI_EMAIL and NAUKRI_PASSWORD.');
     }
+
+    logger.info(`Logging in with profile "${this.profileKey}" using email "${email}".`);
 
     if (!this.page.url().includes(this.locators.loginPath)) {
       await this.goto();
@@ -118,8 +128,8 @@ class LoginPage {
   }
 
   async ensureAuthenticatedSession() {
-    const email = this.credentials.email || getEnv('NAUKRI_EMAIL');
-    const password = this.credentials.password || getEnv('NAUKRI_PASSWORD');
+    const email = this.getEffectiveEmail();
+    const password = this.getEffectivePassword();
 
     if (!hasCompatibleAuthState(email, password, this.profileKey)) {
       logger.info(
@@ -127,12 +137,16 @@ class LoginPage {
       );
     }
 
+    logger.info(`Preparing authenticated session for profile "${this.profileKey}" with email "${email}".`);
+
     if (await this.isAuthenticated()) {
+      logger.info(`Authenticated session is already active for email "${email}".`);
       return;
     }
 
     await this.openLoginModal();
     await this.loginWithCredentials(email, password);
+    logger.info(`Login completed successfully for email "${email}".`);
   }
 
   async isAuthenticated() {
@@ -144,8 +158,8 @@ class LoginPage {
   }
 
   async saveAuthenticatedSession(
-    email = this.credentials.email || getEnv('NAUKRI_EMAIL'),
-    password = this.credentials.password || getEnv('NAUKRI_PASSWORD')
+    email = this.getEffectiveEmail(),
+    password = this.getEffectivePassword()
   ) {
     await this.page.context().storageState({ path: getAuthStatePath(this.profileKey) });
     saveAuthMetadata({ email, password, profileKey: this.profileKey });

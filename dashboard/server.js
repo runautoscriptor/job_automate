@@ -52,6 +52,7 @@ server.on('error', (error) => {
 
 server.listen(PORT, () => {
   console.log(`Dashboard available at http://localhost:${PORT}`);
+  console.log(`Dashboard server started at ${new Date().toISOString()}`);
 });
 
 process.on('SIGINT', () => {
@@ -72,6 +73,7 @@ async function handleApiRequest(request, response, requestUrl) {
       profiles: snapshot.profiles.map((profile) => ({
         id: profile.id,
         label: profile.label,
+        email: profile.displayEmail || '',
         configured: profile.configured,
         state: profile.state,
         nextAutoRunAt: getNextAutoRunAt(profile.state)
@@ -83,6 +85,7 @@ async function handleApiRequest(request, response, requestUrl) {
         ? {
             id: selectedProfile.id,
             label: selectedProfile.label,
+            email: selectedProfile.displayEmail || '',
             configured: selectedProfile.configured
           }
         : null,
@@ -157,7 +160,8 @@ async function serveStaticAsset(response, pathname) {
 
   const fileBuffer = fs.readFileSync(assetPath);
   response.writeHead(200, {
-    'Content-Type': getContentType(assetPath)
+    'Content-Type': getContentType(assetPath),
+    'Cache-Control': 'no-store, max-age=0'
   });
   response.end(fileBuffer);
 }

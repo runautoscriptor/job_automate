@@ -28,6 +28,7 @@ function getDashboardProfiles() {
       label: getEnv(definition.labelEnv, `Profile ${index + 1}`),
       email,
       password,
+      displayEmail: email,
       configured: Boolean(email && password)
     };
   });
