@@ -24,14 +24,18 @@ const profileLocators = Object.freeze({
   },
   resumeFileInputCandidates: [
     '#attachCV',
-    'input[type="file"]',
     'input[accept*=".pdf"]',
     'input[accept*=".doc"]',
-    'input[accept*=".docx"]'
+    'input[accept*=".docx"]',
+    'input[type="file"]'
   ],
   resumeUpdateButton: {
     selector: 'input.dummyUpload[value="Update resume"]'
   },
+  resumeUploadSuccessPattern:
+    /resume\s+(has\s+been\s+)?(uploaded|updated)\s+successfully|successfully\s+(uploaded|updated)/i,
+  resumeUploadErrorPattern:
+    /unsupported file format|max size|upload failed|something went wrong|please try again/i,
   uploadedResumeFileNamePattern: /\.(pdf|doc|docx|rtf)$/i,
   uploadedResumeDatePattern: /Uploaded on/i,
   updateSuccessIndicator: '.success-message-container .success-text',

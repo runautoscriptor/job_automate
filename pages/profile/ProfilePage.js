@@ -162,12 +162,12 @@ class ProfilePage {
 
   async uploadResume(localFilePath) {
     const uploadedFileName = path.basename(localFilePath);
-    const previousResumeInfo = await this.getCurrentResumeInfo();
 
     await this.waitForProfilePageReady().catch(() => {});
+    const previousResumeInfo = await this.getCurrentResumeInfo();
+
     await this.resumeHeading.scrollIntoViewIfNeeded().catch(() => {});
-    await this.quickLinksResumeUpdateLink.click().catch(() => {});
-    await this.page.getByRole('button', { name: /Update resume/i }).first().click().catch(() => {});
+    await this.openResumeUploadControl();
     await this.page.waitForTimeout(1000);
 
     const resumeFileInput = await this.findResumeFileInput();
@@ -184,35 +184,27 @@ class ProfilePage {
       await this.updateResumeButton.click({ force: true }).catch(() => {});
     }
 
-    await expect
-      .poll(
-        async () => {
-          const currentResumeInfo = await this.getCurrentResumeInfo();
-          const hasExpectedFileName = currentResumeInfo.fileName.includes(uploadedFileName);
-          const fileNameChanged = currentResumeInfo.fileName !== previousResumeInfo.fileName;
-          const dateChanged =
-            Boolean(currentResumeInfo.uploadedOn) &&
-            currentResumeInfo.uploadedOn !== previousResumeInfo.uploadedOn;
-
-          if (!hasExpectedFileName) {
-            return false;
-          }
-
-          if (fileNameChanged || dateChanged) {
-            return true;
-          }
-
-          // When the resume name is intentionally stable across runs, the visible
-          // date may also stay the same for repeat uploads on the same day.
-          return previousResumeInfo.fileName === uploadedFileName;
-        },
-        {
-          timeout: 60000
-        }
-      )
-      .toBeTruthy();
+    await this.verifyResumeUploadCompleted(previousResumeInfo, uploadedFileName);
 
     return this.getCurrentResumeInfo();
+  }
+
+  async openResumeUploadControl() {
+    await this.quickLinksResumeUpdateLink.click().catch(() => {});
+    await this.resumeHeading.scrollIntoViewIfNeeded().catch(() => {});
+
+    const updateResumeButtons = [
+      this.page.getByRole('button', { name: /Update resume/i }).first(),
+      this.page.locator('input.dummyUpload[value="Update resume"]').first(),
+      this.page.locator('text=/Update resume/i').last()
+    ];
+
+    for (const updateResumeButton of updateResumeButtons) {
+      if (await updateResumeButton.isVisible().catch(() => false)) {
+        await updateResumeButton.click({ force: true }).catch(() => {});
+        return;
+      }
+    }
   }
 
   async findResumeFileInput() {
@@ -220,12 +212,60 @@ class ProfilePage {
       const locator = this.page.locator(candidate).first();
       const count = await this.page.locator(candidate).count().catch(() => 0);
 
-      if (count > 0) {
+      if (count > 0 && await this.isResumeFileInput(locator)) {
         return locator;
       }
     }
 
     return null;
+  }
+
+  async isResumeFileInput(locator) {
+    const accept = String(await locator.getAttribute('accept').catch(() => '') || '').toLowerCase();
+
+    if (!accept) {
+      return true;
+    }
+
+    const acceptsResume = ['pdf', 'doc', 'docx', 'rtf'].some((extension) => accept.includes(extension));
+    const imageOnly = ['png', 'jpg', 'jpeg', 'gif', 'image/'].some((extension) => accept.includes(extension));
+
+    return acceptsResume || !imageOnly;
+  }
+
+  async verifyResumeUploadCompleted(previousResumeInfo, uploadedFileName) {
+    const successMessage = this.page.getByText(this.locators.resumeUploadSuccessPattern).last();
+    const errorMessage = this.page.getByText(this.locators.resumeUploadErrorPattern).last();
+
+    await expect
+      .poll(
+        async () => {
+          if (await errorMessage.isVisible().catch(() => false)) {
+            const message = await errorMessage.textContent().catch(() => 'Resume upload failed.');
+            return { status: 'failed', message: String(message || '').trim() };
+          }
+
+          const currentResumeInfo = await this.getCurrentResumeInfo();
+          const hasExpectedFileName = currentResumeInfo.fileName.includes(uploadedFileName);
+          const fileNameChanged =
+            Boolean(currentResumeInfo.fileName) &&
+            currentResumeInfo.fileName !== previousResumeInfo.fileName;
+          const dateChanged =
+            Boolean(currentResumeInfo.uploadedOn) &&
+            currentResumeInfo.uploadedOn !== previousResumeInfo.uploadedOn;
+          const successVisible = await successMessage.isVisible().catch(() => false);
+
+          if (hasExpectedFileName && (successVisible || fileNameChanged || dateChanged)) {
+            return { status: 'uploaded' };
+          }
+
+          return { status: 'waiting' };
+        },
+        {
+          timeout: 60000
+        }
+      )
+      .toEqual({ status: 'uploaded' });
   }
 
   async getCurrentResumeInfo() {

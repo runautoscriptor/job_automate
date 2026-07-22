@@ -258,6 +258,7 @@ function buildMetaCard(label, value) {
 function buildModuleCard(title, data, rows) {
   const moduleStatus = getModuleStatus(data);
   const statusClass = normalizeStatusClass(moduleStatus);
+  const cardClass = normalizeStatusClass(title);
   const body = data
     ? rows.map(([label, value]) => `
         <div class="metric-row">
@@ -268,7 +269,7 @@ function buildModuleCard(title, data, rows) {
     : '<div class="empty-state">Waiting for data...</div>';
 
   return `
-    <article class="module-card">
+    <article class="module-card module-card-${cardClass}">
       <header>
         <h3>${escapeHtml(title)}</h3>
         <span class="badge ${statusClass}">${escapeHtml(formatStatus(moduleStatus))}</span>

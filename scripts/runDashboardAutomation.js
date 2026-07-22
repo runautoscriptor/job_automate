@@ -65,42 +65,47 @@ async function main() {
     await loginPage.ensureAuthenticatedSession();
     await stopMonitor.throwIfStopRequested();
 
-    summary.modules.profileRefresh = await runProfileRefreshFlow({
-      homePage,
-      profilePage,
-      stopMonitor
-    });
-    persistRunSummary(profileId, summary);
+    await runDashboardModule(summary, profileId, 'profileRefresh', 'Profile Refresh', () =>
+      runProfileRefreshFlow({
+        homePage,
+        profilePage,
+        stopMonitor
+      })
+    );
 
-    summary.modules.jobSearch = await runJobSearchAndApplyFlow({
-      jobSearchPage,
-      jobApplyPage,
-      stopMonitor
-    });
-    persistRunSummary(profileId, summary);
+    await runDashboardModule(summary, profileId, 'jobSearch', 'Job Search', () =>
+      runJobSearchAndApplyFlow({
+        jobSearchPage,
+        jobApplyPage,
+        stopMonitor
+      })
+    );
 
-    summary.modules.nvites = await runNviteFlow({
-      homePage,
-      nvitePage,
-      jobApplyPage,
-      stopMonitor
-    });
-    persistRunSummary(profileId, summary);
+    await runDashboardModule(summary, profileId, 'nvites', 'Nvite', () =>
+      runNviteFlow({
+        homePage,
+        nvitePage,
+        jobApplyPage,
+        stopMonitor
+      })
+    );
 
-    summary.modules.recommendations = await runRecommendationFlow({
-      homePage,
-      recommendationPage,
-      jobApplyPage,
-      stopMonitor
-    });
-    persistRunSummary(profileId, summary);
+    await runDashboardModule(summary, profileId, 'recommendations', 'Recommendations', () =>
+      runRecommendationFlow({
+        homePage,
+        recommendationPage,
+        jobApplyPage,
+        stopMonitor
+      })
+    );
 
-    summary.modules.resumeUpdate = await runResumeUpdateFlow({
-      homePage,
-      profilePage,
-      stopMonitor
-    });
-    persistRunSummary(profileId, summary);
+    await runDashboardModule(summary, profileId, 'resumeUpdate', 'Resume Update', () =>
+      runResumeUpdateFlow({
+        homePage,
+        profilePage,
+        stopMonitor
+      })
+    );
 
     summary.status = deriveOverallRunStatus(summary.modules);
     summary.finishedAt = new Date().toISOString();
@@ -194,6 +199,26 @@ function persistRunSummary(profileId, summary) {
   replaceLatestRun(profileId, summary.runId, summary);
 }
 
+async function runDashboardModule(summary, profileId, key, label, action) {
+  try {
+    summary.modules[key] = await action();
+  } catch (error) {
+    if (error instanceof StopRequestedError) {
+      throw error;
+    }
+
+    logger.error(`${label} module failed, continuing dashboard workflow: ${error.stack || error.message}`);
+    summary.modules[key] = {
+      module: label,
+      status: 'failed',
+      error: error.message,
+      skipped: true
+    };
+  }
+
+  persistRunSummary(profileId, summary);
+}
+
 function deriveOverallRunStatus(modules = {}) {
   const moduleStatuses = Object.values(modules)
     .map((moduleResult) => getModuleStatus(moduleResult))
@@ -205,6 +230,7 @@ function deriveOverallRunStatus(modules = {}) {
 
   const hasWarnings = moduleStatuses.some((status) =>
     String(status).startsWith('skipped')
+    || String(status).includes('failed')
     || String(status).includes('warning')
     || String(status).includes('no-application')
   );
