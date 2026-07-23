@@ -8,7 +8,12 @@ const {
 } = require('./services/automationController');
 const { readLatestRunLogs, getDashboardState, initializeDashboardState, setSelectedProfileId, updateProfileState } = require('./services/stateStore');
 const { PUBLIC_DIR } = require('./services/paths');
-const { AUTO_RUN_TIME_ZONE, getNextAutoRunAt, startScheduler } = require('./services/scheduler');
+const {
+  AUTO_RUN_TIME_ZONE,
+  getAutoRunTimeLabel,
+  getNextAutoRunAt,
+  startScheduler
+} = require('./services/scheduler');
 
 const PORT = Number(process.env.DASHBOARD_PORT || 8826);
 
@@ -79,7 +84,8 @@ async function handleApiRequest(request, response, requestUrl) {
         nextAutoRunAt: getNextAutoRunAt(profile.state)
       })),
       scheduler: {
-        timeZone: AUTO_RUN_TIME_ZONE
+        timeZone: AUTO_RUN_TIME_ZONE,
+        autoRunTimeLabel: getAutoRunTimeLabel()
       },
       profile: selectedProfile
         ? {

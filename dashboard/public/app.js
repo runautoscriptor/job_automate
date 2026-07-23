@@ -73,8 +73,9 @@ function renderStatus(status) {
   refreshButton.disabled = isRequestInFlight;
   autoRunButton.disabled = isRequestInFlight || !selectedProfile?.configured;
 
+  const autoRunTimeLabel = status.scheduler?.autoRunTimeLabel || '9:00 AM IST';
   autoRunButton.textContent = selectedProfile?.configured
-    ? `Auto Run 9:00 AM IST: ${activeState.autoRunEnabled ? 'On' : 'Off'}`
+    ? `Auto Run ${autoRunTimeLabel}: ${activeState.autoRunEnabled ? 'On' : 'Off'}`
     : 'Auto Run Unavailable';
 
   latestRunMeta.textContent = activeSummary
